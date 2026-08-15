@@ -1,0 +1,34 @@
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# 編輯器
+.vscode/
+.idea/
+*.swp
+
+# 環境變數與金鑰：API key 不要進 repo
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# 相依套件與建置產物（各自的 mvp 分支會用到）
+node_modules/
+dist/
+build/
+.next/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Claude Code 本機設定
+.claude/settings.local.json
+
+# 暫存
+*.log
+tmp/
