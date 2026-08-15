@@ -15,7 +15,7 @@
 ## 三分鐘上手
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/AlanChou890305/career-mvp.git
 cd career-mvp
 git checkout -b mvp/你的名字        # alan / berry / sunny
 ```
@@ -54,7 +54,7 @@ career-mvp/
 
 - 做自己的 MVP → 待在自己的 `mvp/xxx` 分支，不用管 `main`
 - 要改共用文件 → 開 `docs/主題` 分支，發 PR，自己合併
-- `main` 已開啟保護，任何人都不能直接推——包含 Alan
+- `main` 已開啟保護，不能直接推，也不能 force push 或刪掉
 
 PR 不需要等別人核准，開完可以自己按合併。這道關卡的用意不是審查，是讓 `main` 改不到、而且每次改動都留下紀錄——隔天大家能看到共用前提被動了什麼。
 
