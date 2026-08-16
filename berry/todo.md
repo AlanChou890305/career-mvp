@@ -42,7 +42,9 @@
 - 計分方式看 [scoring-sop.md](scoring-sop.md)（雙軌命中率 + ★ 題分開算 + 爭議記錄）
 - [v] 試跑 tech-pm-03（幣安，寬鬆 80%，標準答案籠統→虛高）
 - [v] 試跑 tech-pm-01（和碩，寬鬆 88% / 嚴格 50%，★ 題只到部分）
-- [v] 6 筆用 Claude 跑完 prompt v1 → 見 [results-v1.md](results-v1.md)（寬鬆 94% / 嚴格 77% / ★ 70%）
+- [v] 6 筆跑 prompt v1 → [results-v1.md](results-v1.md)（嚴格 77% / ★ 70%）
+- [v] 6 筆跑 prompt v2（深挖版）→ [results-v2.md](results-v2.md)（嚴格 88% / ★ 90%）
+  - v2 贏在經歷題，但純技術題語料（frontend）掉 → 深度換廣度的取捨
 - [ ]（選）之後真要做成系統再搬進 Dify
 
 ### D. 收斂日準備（三人一起）
