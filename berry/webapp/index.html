@@ -6,9 +6,9 @@
 <title>面試教練</title>
 <style>
   :root{
-    --bg:#fff; --card:#fff; --ink:#000; --sub:#3c3c4399; --sub2:#8a8a8e;
+    --bg:#f2f2f7; --card:#fff; --ink:#000; --sub:#3c3c4399; --sub2:#8a8a8e;
     --sep:#c6c6c8; --blue:#007aff; --orange:#ff9500; --green:#34c759;
-    --fill:#78788014;
+    --fill:#78788014; --shadow:0 1px 2px rgba(0,0,0,.04),0 3px 10px rgba(0,0,0,.04);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%;color-scheme:light}
@@ -36,7 +36,7 @@
   .h1{font-size:34px;font-weight:800;letter-spacing:-.02em;margin:14px 0 2px}
   .lead{color:var(--sub);font-size:15px;margin:0 0 16px}
   /* iOS 分組卡片 */
-  .group{background:var(--card);border:1px solid var(--sep);border-radius:14px;overflow:hidden;margin:10px 0 6px}
+  .group{background:var(--card);border-radius:14px;overflow:hidden;margin:10px 0 6px;box-shadow:var(--shadow)}
   .field{padding:12px 16px}
   .field+.field{border-top:1px solid var(--sep)}
   .field label{display:block;font-size:12px;color:var(--sub2);font-weight:600;
@@ -63,7 +63,7 @@
   .tag{font-size:11px;color:var(--orange);font-weight:600;margin-left:6px;white-space:nowrap}
   .sechead{font-size:13px;color:var(--sub2);font-weight:600;margin:22px 0 2px;padding:0 4px}
   /* JD 適配分數 */
-  .match{background:var(--card);border:1px solid var(--sep);border-radius:14px;padding:16px;margin-top:2px}
+  .match{background:var(--card);border-radius:14px;padding:16px;margin-top:2px;box-shadow:var(--shadow)}
   .match .mscore{font-size:36px;font-weight:800;letter-spacing:-.02em;line-height:1}
   .match .mscore small{font-size:15px;color:var(--sub2);font-weight:500;margin-left:2px}
   .match .mbar{height:6px;border-radius:99px;background:var(--fill);overflow:hidden;margin:10px 0 10px}
@@ -77,7 +77,7 @@
   .lockic{width:14px;height:14px;vertical-align:-2px}
   /* dashboard */
   .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
-  .tile{background:var(--card);border:1px solid var(--sep);border-radius:14px;padding:14px}
+  .tile{background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
   .tile .k{font-size:12px;color:var(--sub2);font-weight:600}
   .tile .v{font-size:30px;font-weight:800;letter-spacing:-.02em;margin-top:2px}
   .tile .v small{font-size:14px;color:var(--sub2);font-weight:500}
@@ -127,8 +127,8 @@
     font-size:12px;cursor:pointer;padding:6px}
   .clearall:active{opacity:.5}
   /* 累積計數（迷你護城河示範） */
-  .accu-now{display:flex;align-items:baseline;gap:8px;background:var(--fill);
-    border-radius:14px;padding:14px 16px;margin:10px 0}
+  .accu-now{display:flex;align-items:baseline;gap:8px;background:var(--card);
+    border-radius:14px;padding:14px 16px;margin:10px 0;box-shadow:var(--shadow)}
   .accu-now .n{font-size:30px;font-weight:800;letter-spacing:-.02em;color:var(--blue)}
   .accu-now .t{font-size:13px;color:var(--sub)}
   /* 越用越準示意圖 */
