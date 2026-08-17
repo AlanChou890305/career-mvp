@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>面試準備</title>
+<title>面試教練</title>
 <style>
   :root{
     --bg:#fff; --card:#fff; --ink:#000; --sub:#3c3c4399; --sub2:#8a8a8e;
@@ -48,6 +48,7 @@
   .btn{display:block;width:100%;border:0;border-radius:14px;padding:15px;font-size:17px;
     font-weight:600;cursor:pointer;background:var(--blue);color:#fff;margin-top:16px}
   .btn:active{opacity:.8} .btn:disabled{opacity:.5}
+  .btn.cta{width:auto;display:inline-block;padding:13px 32px;margin:18px auto 0}
   .link{display:block;text-align:center;color:var(--blue);background:none;border:0;
     font-size:15px;padding:12px;cursor:pointer;width:100%}
   .err{color:#ff3b30;font-size:14px;text-align:center;margin-top:10px}
@@ -61,9 +62,19 @@
   .qwhy{color:var(--sub);font-size:13px;margin-top:3px}
   .tag{font-size:11px;color:var(--orange);font-weight:600;margin-left:6px;white-space:nowrap}
   .sechead{font-size:13px;color:var(--sub2);font-weight:600;margin:22px 0 2px;padding:0 4px}
+  /* JD 適配分數 */
+  .match{background:var(--card);border:1px solid var(--sep);border-radius:14px;padding:16px;margin-top:2px}
+  .match .mscore{font-size:36px;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .match .mscore small{font-size:15px;color:var(--sub2);font-weight:500;margin-left:2px}
+  .match .mbar{height:6px;border-radius:99px;background:var(--fill);overflow:hidden;margin:10px 0 10px}
+  .match .mbar>span{display:block;height:100%;background:var(--blue)}
+  .match .mreason{font-size:14px;color:var(--sub)}
+  .match .mnote{font-size:11px;color:var(--sub2);margin-top:8px}
   .rec{padding:13px 16px;display:flex;gap:10px;align-items:flex-start}
   .rec+.rec{border-top:1px solid var(--sep)}
-  .chk{color:var(--green);flex:0 0 auto;font-weight:700}
+  .chk{color:var(--green);flex:0 0 auto;font-weight:700;display:flex}
+  .chk svg{width:18px;height:18px;margin-top:1px}
+  .lockic{width:14px;height:14px;vertical-align:-2px}
   /* dashboard */
   .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
   .tile{background:var(--card);border:1px solid var(--sep);border-radius:14px;padding:14px}
@@ -78,6 +89,54 @@
   .drow+.drow{border-top:1px solid var(--sep)}
   .drow .up{color:var(--green)} .drow .dn{color:#ff3b30}
   .foot{font-size:12px;color:var(--sub2);padding:14px 6px 0}
+  /* 護城河對照 */
+  .moat{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+  .mcol{border:1px solid var(--sep);border-radius:14px;padding:14px;background:var(--card)}
+  .mcol .mh{font-size:13px;font-weight:700;margin-bottom:8px}
+  .mcol.a .mh{color:var(--sub2)} .mcol.b{border-color:var(--blue)} .mcol.b .mh{color:var(--blue)}
+  .mcol ul{margin:0;padding:0;list-style:none}
+  .mcol li{font-size:13px;padding:5px 0 5px 20px;position:relative}
+  .mcol.a li{color:var(--sub)}
+  .mcol.a li:before{content:"✕";position:absolute;left:0;color:var(--sub2);font-weight:700}
+  .mcol.b li:before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:700}
+  /* 空狀態（用戶還沒有資料） */
+  .empty{border:1px dashed var(--sep);border-radius:14px;padding:26px 20px;text-align:center;margin:10px 0}
+  .empty .ei{font-size:34px;line-height:1;color:var(--sub2)}
+  .empty .ei svg{width:42px;height:42px;display:inline-block}
+  .empty .et{font-size:17px;font-weight:700;margin-top:8px}
+  .empty .ed{font-size:13px;color:var(--sub);margin-top:6px;max-width:300px;margin-left:auto;margin-right:auto}
+  /* 分析紀錄列 */
+  .hrow{display:flex;align-items:center;gap:10px;padding:13px 16px}
+  .hrow+.hrow{border-top:1px solid var(--sep)}
+  .hmain{flex:1;min-width:0;cursor:pointer}
+  .ht{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hsub{font-size:12px;color:var(--sub2);margin-top:2px}
+  .hacts{display:flex;gap:16px;margin-top:9px}
+  .hact{display:inline-flex;align-items:center;gap:5px;background:none;border:0;padding:0;
+    font-size:13px;color:var(--blue);cursor:pointer}
+  .hact:active{opacity:.5}
+  .hact.del{color:#ff3b30}
+  .hact svg{width:14px;height:14px;flex:0 0 auto}
+  .hedit{font-size:15px;font-weight:600;font-family:inherit;color:var(--ink);background:var(--card);
+    border:1px solid var(--blue);border-radius:8px;padding:4px 8px;width:100%;outline:none}
+  .hbadge{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;font-size:12px;font-weight:700;
+    padding:4px 10px;border-radius:99px;background:var(--fill);color:var(--ink);white-space:nowrap}
+  .hbadge svg{width:13px;height:13px;color:var(--blue)}
+  .hchev{color:var(--sub2);font-size:20px;flex:0 0 auto;line-height:1;cursor:pointer}
+  .clearall{display:block;margin:12px auto 0;background:none;border:0;color:var(--sub2);
+    font-size:12px;cursor:pointer;padding:6px}
+  .clearall:active{opacity:.5}
+  /* 累積計數（迷你護城河示範） */
+  .accu-now{display:flex;align-items:baseline;gap:8px;background:var(--fill);
+    border-radius:14px;padding:14px 16px;margin:10px 0}
+  .accu-now .n{font-size:30px;font-weight:800;letter-spacing:-.02em;color:var(--blue)}
+  .accu-now .t{font-size:13px;color:var(--sub)}
+  /* 越用越準示意圖 */
+  .accu{display:flex;align-items:flex-end;gap:12px;height:130px;padding:12px 4px 0}
+  .accu .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+  .accu .cv{font-size:12px;font-weight:700;color:var(--blue)}
+  .accu .cb{width:100%;max-width:46px;border-radius:8px 8px 0 0;background:linear-gradient(180deg,#4da3ff,var(--blue))}
+  .accu .cl{font-size:11px;color:var(--sub2);text-align:center;line-height:1.2}
   /* 底部分頁列 */
   .tabbar{position:absolute;left:0;right:0;bottom:0;display:flex;
     background:color-mix(in srgb,var(--card) 82%,transparent);
@@ -86,10 +145,25 @@
   .tab{flex:1;background:none;border:0;padding:8px 0 10px;cursor:pointer;color:var(--sub2);
     font-size:10px;display:flex;flex-direction:column;align-items:center;gap:3px}
   .tab .ic{font-size:22px;line-height:1}
+  .tab .ic svg{width:25px;height:25px;display:block}
   .tab.on{color:var(--blue)}
   .spin{display:inline-block;width:16px;height:16px;border:2px solid #ffffff66;
     border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-3px;margin-right:6px}
   @keyframes sp{to{transform:rotate(360deg)}}
+  /* 分頁切換淡入 */
+  @keyframes secin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  #input:not(.hide),#result:not(.hide),#dash:not(.hide){animation:secin .24s ease}
+  /* 結果頁載入中 */
+  .loading{text-align:center;padding:56px 20px}
+  .loading .lspin{width:36px;height:36px;border:3px solid var(--fill);border-top-color:var(--blue);
+    border-radius:50%;animation:sp .8s linear infinite;margin:0 auto}
+  .loading .lt{margin-top:18px;font-size:17px;font-weight:700}
+  .loading .ls{margin-top:6px;font-size:14px;color:var(--sub2);min-height:20px;transition:opacity .3s}
+  /* 串流：問題逐條淡入 */
+  @keyframes qin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .qin{animation:qin .3s ease}
+  .streamnote{color:var(--blue);font-size:13px;padding:10px 4px 0;display:flex;align-items:center;gap:7px}
+  .streamnote .spin{border-color:#007aff44;border-top-color:var(--blue)}
   .hide{display:none}
 </style>
 </head>
@@ -99,8 +173,8 @@
 
     <!-- ① 輸入 -->
     <section id="input" class="pad">
-      <div class="h1">面試準備</div>
-      <p class="lead">輸入你的經歷，AI 幫你預測面試官會怎麼追問。</p>
+      <div class="h1">面試教練</div>
+      <p class="lead">上場前，先讓教練幫你抓出會被追問的地方。</p>
       <div class="group">
         <div class="field">
           <label>你的背景 · 經歷</label>
@@ -111,7 +185,7 @@
           <textarea id="jd" style="min-height:60px" placeholder="貼上要面試的職位描述"></textarea>
         </div>
       </div>
-      <div class="caption">越具體，追問越準。</div>
+      <div class="caption">越具體，追問越準。⌘／Ctrl + Enter 也能送出。</div>
       <button class="btn" id="go" onclick="generate()">產生分析</button>
       <button class="link" onclick="fillSample()">填入範例</button>
       <div id="err" class="err hide"></div>
@@ -119,50 +193,154 @@
 
     <!-- ② 結果 -->
     <section id="result" class="pad hide">
-      <div class="h1">會被追問</div>
-      <p class="lead"><span style="color:var(--orange)">●</span> 橘色是針對你經歷的追問。</p>
-      <div class="group" id="questions"></div>
-      <div class="sechead">準備建議</div>
-      <div class="group" id="recs"></div>
-      <button class="link" onclick="show('input')">← 換一筆分析</button>
+      <div id="result-empty" class="empty hide">
+        <div class="ei"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.5a8 8 0 0 1-11.6 7.1L3.5 20l1.4-5.3A8 8 0 1 1 20.5 11.5Z"/></svg></div>
+        <div class="et">還沒有分析結果</div>
+        <div class="ed">填你的背景，讓面試教練幫你預測面試官會怎麼追問。</div>
+        <button class="btn cta" onclick="show('input')">開始分析</button>
+      </div>
+      <div id="result-loading" class="loading hide">
+        <div class="lspin"></div>
+        <div class="lt">AI 分析中</div>
+        <div class="ls" id="lstep">讀取你的背景與 JD⋯</div>
+      </div>
+      <div id="result-content" class="hide">
+        <div class="h1">會被追問</div>
+        <p class="lead"><span style="color:var(--orange)">●</span> 橘色是針對你經歷的追問。</p>
+        <div id="matchbox"></div>
+        <div class="group" id="questions"></div>
+        <div id="streamnote" class="streamnote hide"><span class="spin"></span>AI 持續生成中⋯</div>
+        <div class="sechead hide" id="rechead">準備建議</div>
+        <div class="group hide" id="recs"></div>
+        <button class="btn" onclick="show('input')">開始分析</button>
+      </div>
     </section>
 
     <!-- ③ 成效 -->
     <section id="dash" class="pad hide">
       <div class="h1">成效</div>
-      <p class="lead">本次已分析 <b id="count">0</b> 筆 · 6 筆語料驗證（v1→v2）。</p>
-      <div class="tiles">
-        <div class="tile"><div class="k">命中率 v2</div><div class="v">88<small>%</small></div>
-          <div class="bar"><span style="width:88%"></span></div><div class="d">v1：77%</div></div>
-        <div class="tile"><div class="k">★ 經歷題 v2</div><div class="v">90<small>%</small></div>
-          <div class="bar"><span style="width:90%"></span></div><div class="d">v1：70%</div></div>
-        <div class="tile locked"><div class="k">JD 匹配分數</div><div class="v">🔒</div><div class="d">進階功能</div></div>
-        <div class="tile locked"><div class="k">投遞進度</div><div class="v">🔒</div><div class="d">進階功能</div></div>
-      </div>
-      <div class="sechead">各語料 v1 → v2</div>
-      <div class="group">
-        <div class="drow"><span>和碩 專管</span><span><span style="color:var(--sub2)">50%</span> → <span class="up">75%</span></span></div>
-        <div class="drow"><span>幣安 Payment PM</span><span><span style="color:var(--sub2)">80%</span> → <span class="up">100%</span></span></div>
-        <div class="drow"><span>Shopback Search PM</span><span><span style="color:var(--sub2)">100%</span> → 100%</span></div>
-        <div class="drow"><span>字節 前端</span><span><span style="color:var(--sub2)">78%</span> → <span class="dn">67%</span></span></div>
-        <div class="drow"><span>威許 後端</span><span><span style="color:var(--sub2)">67%</span> → <span class="up">100%</span></span></div>
-      </div>
-      <div class="foot">深挖經歷在 PM／後端進步、在純技術題的前端退步 → 護城河在「經歷歸納」，不在「答得比 ChatGPT 好」。</div>
+      <p class="lead">你每一次的分析都會記錄在這裡，點開可以回顧。</p>
+
+      <div class="accu-now"><span class="n" id="count">0</span>
+        <span class="t">累積分析筆數<br>每一筆都被記住，之後可回顧</span></div>
+
+      <div class="sechead">分析紀錄</div>
+      <div id="history"></div>
+
+      <div class="sechead">護城河閉環（未來才做）</div>
+      <div class="tile locked"><div class="k">投遞進度追蹤 <svg class="lockic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></div>
+        <div class="d">跨時間追蹤你的投遞與面試結果，餵回引擎讓命中率越來越準。需登入與資料庫，未來才做。</div></div>
     </section>
 
   </div>
 
   <nav class="tabbar">
-    <button class="tab on" id="t-input" onclick="show('input')"><span class="ic">✏️</span>輸入</button>
-    <button class="tab" id="t-result" onclick="show('result')"><span class="ic">💬</span>結果</button>
-    <button class="tab" id="t-dash" onclick="show('dash')"><span class="ic">📊</span>成效</button>
+    <button class="tab on" id="t-input" onclick="show('input')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.7 12 3.5l9 7.2"/><path d="M5.2 9.5V20a1 1 0 0 0 1 1h11.6a1 1 0 0 0 1-1V9.5"/><path d="M9.5 21v-6.2h5V21"/></svg></span>首頁</button>
+    <button class="tab" id="t-result" onclick="show('result')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.5a8 8 0 0 1-11.6 7.1L3.5 20l1.4-5.3A8 8 0 1 1 20.5 11.5Z"/></svg></span>結果</button>
+    <button class="tab" id="t-dash" onclick="show('dash')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M8 16v-4"/><path d="M13 16V8"/><path d="M18 16v-6"/></svg></span>成效</button>
   </nav>
 </div>
 
 <script>
 const SAMPLE_BG="電商 PM 經驗 4.5 年，大學傳播系（非工程背景），多益 790。曾主導過搜尋產品改版，帶跨部門把轉換率往上拉。想轉往互聯網／軟體產品經理。";
 const SAMPLE_JD="Payment Product Manager：負責支付／金流產品規劃與迭代，與工程、風控、數據團隊協作，需 3 年以上 PM 經驗。";
-let count=0;
+
+// ── 分析紀錄（存在這台瀏覽器的 localStorage，不需後端） ──
+const HKEY="berry_history";
+function loadHistory(){try{return JSON.parse(localStorage.getItem(HKEY))||[]}catch(e){return[]}}
+function saveHistory(list){try{localStorage.setItem(HKEY,JSON.stringify(list))}catch(e){}}
+function pushHistory(bg,jd,data){
+  const list=loadHistory();
+  list.unshift({t:Date.now(),bg,jd,data});
+  if(list.length>50) list.length=50;
+  saveHistory(list);
+}
+function openHistory(i){
+  const r=loadHistory()[i]; if(!r) return;
+  document.getElementById('bg').value=r.bg||'';
+  document.getElementById('jd').value=r.jd||'';
+  grow(document.getElementById('bg')); grow(document.getElementById('jd')); syncBtn();
+  render(r.data); setResultState('content'); show('result');
+}
+function clearHistory(){
+  if(confirm('確定清除所有分析紀錄？此動作無法復原。')){saveHistory([]);renderDash();}
+}
+// 標題統一用「目標職位」：取 JD 冒號/逗號前那段當職位名
+function jobTitle(jd){
+  if(!jd||!jd.trim()) return '未填目標職位';
+  const first=jd.split(/[：:，。\n（(]/)[0].trim();
+  return (first||jd.trim()).slice(0,24);
+}
+function titleOf(r){return (r.title&&r.title.trim())?r.title.trim():jobTitle(r.jd);}
+// 線條 icon（用 currentColor，跟著文字上色）
+const IC={
+  edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  redo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M21 8A9 9 0 1 0 18.5 18.5"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>',
+  chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M8 16v-4"/><path d="M13 16V8"/><path d="M18 16v-6"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+};
+// 就地編輯：點改名 → 標題變輸入框，Enter/失焦存檔，Esc 取消
+function renameHistory(i,e){
+  e.stopPropagation();
+  const row=e.target.closest('.hrow'); if(!row) return;
+  const ht=row.querySelector('.ht'); const r=loadHistory()[i]; if(!r) return;
+  ht.innerHTML=`<input class="hedit" value="${esc(titleOf(r)).replace(/"/g,'&quot;')}">`;
+  const inp=ht.querySelector('.hedit'); inp.focus(); inp.select();
+  let saved=false;
+  const save=()=>{ if(saved) return; saved=true;
+    const list=loadHistory(); if(list[i]){list[i].title=inp.value.trim();saveHistory(list);} renderDash(); };
+  inp.addEventListener('click',ev=>ev.stopPropagation());
+  inp.addEventListener('keydown',ev=>{ev.stopPropagation();
+    if(ev.key==='Enter'){ev.preventDefault();save();}
+    else if(ev.key==='Escape'){saved=true;renderDash();}});
+  inp.addEventListener('blur',save);
+}
+function reloadHistory(i,e){
+  e.stopPropagation();
+  const r=loadHistory()[i]; if(!r) return;
+  const bg=document.getElementById('bg'), jd=document.getElementById('jd');
+  bg.value=r.bg||''; jd.value=r.jd||'';
+  grow(bg); grow(jd); syncBtn(); show('input'); bg.focus();
+}
+function deleteHistory(i,e){
+  e.stopPropagation();
+  if(!confirm('刪除這筆紀錄？此動作無法復原。')) return;
+  const list=loadHistory(); list.splice(i,1); saveHistory(list); renderDash();
+}
+function renderDash(){
+  const list=loadHistory();
+  document.getElementById('count').textContent=list.length;
+  const h=document.getElementById('history');
+  if(!list.length){
+    h.innerHTML=`<div class="empty"><div class="ei">${IC.chart}</div>
+      <div class="et">還沒有分析紀錄</div>
+      <div class="ed">到「首頁」做一次分析，結果就會累積在這裡，之後隨時點開回顧。</div></div>`;
+    return;
+  }
+  const p=n=>String(n).padStart(2,'0');
+  const rows=list.map((r,i)=>{
+    const d=new Date(r.t);
+    const when=`${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    const nq=((r.data&&r.data.advanced_questions)||[]).length;
+    const sc=(r.jd&&r.data&&r.data.jd_match&&r.data.jd_match.score>0)?r.data.jd_match.score:null;
+    return `<div class="hrow">
+      <div class="hmain" onclick="openHistory(${i})">
+        <div class="ht">${esc(titleOf(r))}</div>
+        <div class="hsub">${when} · ${nq} 題</div>
+        <div class="hacts">
+          <button class="hact" onclick="renameHistory(${i},event)">${IC.edit}改名</button>
+          <button class="hact" onclick="reloadHistory(${i},event)">${IC.redo}重測一次</button>
+          <button class="hact del" onclick="deleteHistory(${i},event)">${IC.trash}刪除</button>
+        </div>
+      </div>
+      ${sc?`<span class="hbadge">${IC.target}匹配 ${sc} 分</span>`:''}
+      <span class="hchev" onclick="openHistory(${i})">›</span></div>`;
+  }).join('');
+  h.innerHTML=`<div class="group">${rows}</div>
+    <button class="clearall" onclick="clearHistory()">清除全部紀錄</button>`;
+}
 
 function show(id){
   for(const s of ['input','result','dash']) document.getElementById(s).classList.toggle('hide',s!==id);
@@ -170,40 +348,145 @@ function show(id){
     document.getElementById(t).classList.toggle('on',s===id);
   document.querySelector('.scroll').scrollTop=0;
 }
-function fillSample(){document.getElementById('bg').value=SAMPLE_BG;document.getElementById('jd').value=SAMPLE_JD;}
+function fillSample(){
+  const bg=document.getElementById('bg'), jd=document.getElementById('jd');
+  bg.value=SAMPLE_BG; jd.value=SAMPLE_JD; grow(bg); grow(jd); syncBtn(); bg.focus();
+}
+
+// 輸入框自動長高 + 依有無背景切換按鈕
+function grow(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+function syncBtn(){document.getElementById('go').disabled=!document.getElementById('bg').value.trim();}
+
+// 結果頁三種狀態：empty / loading / content
+let hasResult=false;
+function setResultState(s){
+  document.getElementById('result-empty').classList.toggle('hide',s!=='empty');
+  document.getElementById('result-loading').classList.toggle('hide',s!=='loading');
+  document.getElementById('result-content').classList.toggle('hide',s!=='content');
+}
+
+// 等待時輪播四句（對應 prompt 的實際步驟，讓等待有意義）
+const LSTEPS=["讀取你的背景與 JD⋯","推論你一定經歷過、但沒寫出來的場景⋯",
+  "模擬面試官，想最尖銳的追問⋯","整理準備建議與 JD 適配分數⋯"];
+let stepTimer=null;
+function startSteps(){
+  const el=document.getElementById('lstep'); let i=0; el.textContent=LSTEPS[0];
+  stepTimer=setInterval(()=>{i=(i+1)%LSTEPS.length;
+    el.style.opacity=0; setTimeout(()=>{el.textContent=LSTEPS[i];el.style.opacity=1;},250);},2600);
+}
+function stopSteps(){if(stepTimer){clearInterval(stepTimer);stepTimer=null;}}
+
+// 把一段 SSE 訊息（event: / data:）解析成 {event,data}
+function parseSSE(chunk){
+  let ev='message', data='';
+  for(const line of chunk.split('\n')){
+    if(line.startsWith('event:')) ev=line.slice(6).trim();
+    else if(line.startsWith('data:')) data+=line.slice(5).trim();
+  }
+  if(!data) return null;
+  try{return {event:ev,data:JSON.parse(data)};}catch(e){return null;}
+}
+// 開始串流結果：清空、露出問題區、其餘先藏
+function prepareStreaming(){
+  document.getElementById('matchbox').innerHTML='';
+  document.getElementById('questions').innerHTML='';
+  document.getElementById('recs').innerHTML='';
+  document.getElementById('rechead').classList.add('hide');
+  document.getElementById('recs').classList.add('hide');
+  document.getElementById('streamnote').classList.remove('hide');
+}
 
 async function generate(){
   const bg=document.getElementById('bg').value.trim(), jd=document.getElementById('jd').value.trim();
-  const err=document.getElementById('err'), btn=document.getElementById('go');
+  const err=document.getElementById('err');
   err.classList.add('hide');
   if(!bg){err.textContent='請至少填寫你的背景。';err.classList.remove('hide');return;}
-  btn.disabled=true; btn.innerHTML='<span class="spin"></span>AI 分析中⋯';
+  // 立刻回饋：切到結果頁、放上「分析中」動畫
+  setResultState('loading'); show('result'); startSteps();
   try{
     const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({background:bg,jd})});
-    const data=await r.json();
-    if(!r.ok) throw new Error(data.error||'產生失敗');
-    render(data); count++; document.getElementById('count').textContent=count; show('result');
-  }catch(e){err.textContent=e.message;err.classList.remove('hide');}
-  finally{btn.disabled=false;btn.textContent='產生分析';}
+    if(!r.ok){ const d=await r.json().catch(()=>({})); throw new Error(d.error||'產生失敗'); }
+    const reader=r.body.getReader(), dec=new TextDecoder();
+    let buf='', firstQ=true, finalData=null;
+    while(true){
+      const {value,done}=await reader.read();
+      if(done) break;
+      buf+=dec.decode(value,{stream:true});
+      let i;
+      while((i=buf.indexOf('\n\n'))>=0){
+        const ev=parseSSE(buf.slice(0,i)); buf=buf.slice(i+2);
+        if(!ev) continue;
+        if(ev.event==='question'){
+          if(firstQ){ stopSteps(); prepareStreaming(); setResultState('content'); firstQ=false; }
+          const q=document.getElementById('questions');
+          q.appendChild(makeQrow(ev.data,q.children.length));
+        }else if(ev.event==='done'){
+          finalData=ev.data;
+        }else if(ev.event==='error'){
+          throw new Error(ev.data.error||'產生失敗');
+        }
+      }
+    }
+    if(!finalData) throw new Error('連線中斷，請再試一次。');
+    pushHistory(bg,jd,finalData); render(finalData); renderDash();
+    hasResult=true; setResultState('content');
+  }catch(e){
+    err.textContent=e.message; err.classList.remove('hide');
+    setResultState(hasResult?'content':'empty'); show('input');
+  }finally{ stopSteps(); }
 }
 
+function makeQrow(it,i){
+  const el=document.createElement('div'); el.className='qrow qin';
+  el.innerHTML=`<div class="idx ${it.experience_probe?'star':''}">${i+1}</div>
+    <div class="qtext">${esc(it.question)}${it.experience_probe?'<span class="tag">經歷</span>':''}
+    <div class="qwhy">${esc(it.rationale||'')}</div></div>`;
+  return el;
+}
+function renderMatch(data){
+  const mb=document.getElementById('matchbox'); mb.innerHTML='';
+  const jd=document.getElementById('jd').value.trim();
+  const m=data.jd_match;
+  if(jd && m && typeof m.score==='number' && m.score>0){
+    const s=Math.max(0,Math.min(100,m.score));
+    const col=s>=80?'var(--green)':s>=60?'var(--blue)':'var(--orange)';
+    mb.innerHTML=`<div class="sechead">與這個 JD 的適配 · 觀察值</div>
+      <div class="match">
+        <div class="mscore" style="color:${col}">${s}<small>分</small></div>
+        <div class="mbar"><span style="width:${s}%;background:${col}"></span></div>
+        <div class="mreason">${esc(m.reason||'')}</div>
+        <div class="mnote">觀察值，非錄取預測。</div>
+      </div>`;
+  }
+}
+// 權威渲染：串流結束時用完整資料重畫一次，保證正確
 function render(data){
+  renderMatch(data);
   const q=document.getElementById('questions'); q.innerHTML='';
-  (data.advanced_questions||[]).forEach((it,i)=>{
-    const el=document.createElement('div'); el.className='qrow';
-    el.innerHTML=`<div class="idx ${it.experience_probe?'star':''}">${i+1}</div>
-      <div class="qtext">${esc(it.question)}${it.experience_probe?'<span class="tag">經歷</span>':''}
-      <div class="qwhy">${esc(it.rationale||'')}</div></div>`;
-    q.appendChild(el);
-  });
+  (data.advanced_questions||[]).forEach((it,i)=>q.appendChild(makeQrow(it,i)));
   const r=document.getElementById('recs'); r.innerHTML='';
   (data.action_recommendations||[]).forEach(t=>{
     const el=document.createElement('div'); el.className='rec';
-    el.innerHTML=`<span class="chk">✓</span><div>${esc(t)}</div>`; r.appendChild(el);
+    el.innerHTML=`<span class="chk">${IC.check}</span><div>${esc(t)}</div>`; r.appendChild(el);
   });
+  document.getElementById('streamnote').classList.add('hide');
+  document.getElementById('rechead').classList.remove('hide');
+  document.getElementById('recs').classList.remove('hide');
 }
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+// 初始化：綁輸入行為、還原紀錄、預設空狀態
+for(const id of ['bg','jd']){
+  const el=document.getElementById(id);
+  el.addEventListener('input',()=>{grow(el);syncBtn();});
+  el.addEventListener('keydown',e=>{
+    if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){e.preventDefault();generate();}
+  });
+}
+syncBtn();
+setResultState('empty');
+renderDash(); // 頁面載入時就把先前存的紀錄畫出來
 </script>
 </body>
 </html>
