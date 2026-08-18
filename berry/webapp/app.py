@@ -21,44 +21,63 @@ PORT = 8000
 MODEL = "claude-opus-4-8"
 
 # prompt v2：加推論步驟，逼 AI 從背景推隱含場景、往下鑽一層追問
-SYSTEM_PROMPT = """你是一位很會「追問」的資深面試官。以下會給你一位候選人的背景與應徵職位。
+SYSTEM_PROMPT = """你是一位很會「追問」的資深面試官兼面試教練。以下會給你一位候選人的背景與應徵的目標職位。
 
 步驟一（先想，不用輸出）：
 從背景推論「他一定經歷過、但履歷沒明講」的具體場景。
 例如：他若管過 KPI，就一定有人幫他訂目標、也一定遇過達不到目標的時候；
 他若帶過團隊，就一定處理過績效差的成員、也做過人力取捨。
 
-步驟二：進階問題 8 題
+步驟二：headline 一句話摘要
+from：一句話濃縮候選人現在的樣子（例如「電商 PM · 4.5 年」）。
+to：幾個字寫出他的目標職位（例如「支付產品 PM」）。
+
+步驟三：進階問題 8 題
 預測這位候選人最可能被面試官追問的 8 個問題。
 排序：越需要讀懂他的背景、越尖銳具體的排越前面；通用、看職位就能猜到的排後面。
-關鍵要求：不要停在「你怎麼管 KPI」這種主題層問法，要往下鑽一層——
-問到「這些 KPI 的目標是誰、怎麼訂出來的」「達不到時你怎麼處理」這種角度。
-每題標註 experience_probe：若這題「非讀懂他的背景就問不出來」設為 true，通用題設為 false。
-每題附一句 rationale，說明為什麼會問（從背景哪一點推論出來）。
+不要停在「你怎麼管 KPI」這種主題層問法，要往下鑽一層——問到「目標是誰訂的」「達不到時怎麼處理」這種角度。
+每題要標註：
+- type：只能是「必答」「深挖」「暖身」三選一。必答＝幾乎一定會問、答不好直接扣分的核心題；深挖＝針對他的經歷往下追問；暖身＝開場或通用題。
+- category：2–5 個字的主題標籤（例如「數據實績」「挫折處理」「領域落差」「技術溝通」「指標思維」「動機」）。
+- experience_probe：若這題非讀懂他的背景就問不出來設為 true，通用題 false。
+- rationale：一句話說明為什麼會問（從背景哪一點推論出來）。
 
-步驟三：行動推薦 3–5 條
+步驟四：行動推薦 3–5 條
 針對上面的問題，給具體、可執行的面試前準備建議。不要講「多練習」這種空話。
 
-步驟四：JD 適配分數（只有在有提供 JD 時才做）
-評估這位候選人和這個 JD 的適配程度，給一個 0–100 的整數分數，並用一句話說明主要加分點與最大落差。
-這是一個「觀察值」供參考，不是錄取預測。
-若沒有提供 JD，score 給 0、reason 寫「未提供 JD」。
+步驟五：jd_match 目標職位適配（觀察值，非錄取預測）
+- score：0–100 的整數。
+- verdict：一句「精煉的判語」，8–16 字，像標題那樣（例如「有基礎，但需補領域知識」）。不要在這裡展開細節或把優勢落差塞進來。
+- strengths：2–3 點優勢，每點一句短語（15 字內），不要長句。
+- gaps：2–3 點主要落差，每點一句短語（15 字內）。
+strengths 與 gaps 一定要填，這是判語之外的細節，兩者不重複。
 
 全部用繁體中文。"""
 
 OUTPUT_SCHEMA = {
     "type": "object",
     "properties": {
+        "headline": {
+            "type": "object",
+            "properties": {
+                "from": {"type": "string"},
+                "to": {"type": "string"},
+            },
+            "required": ["from", "to"],
+            "additionalProperties": False,
+        },
         "advanced_questions": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
                     "question": {"type": "string"},
+                    "type": {"type": "string"},
+                    "category": {"type": "string"},
                     "rationale": {"type": "string"},
                     "experience_probe": {"type": "boolean"},
                 },
-                "required": ["question", "rationale", "experience_probe"],
+                "required": ["question", "type", "category", "rationale", "experience_probe"],
                 "additionalProperties": False,
             },
         },
@@ -67,13 +86,15 @@ OUTPUT_SCHEMA = {
             "type": "object",
             "properties": {
                 "score": {"type": "integer"},
-                "reason": {"type": "string"},
+                "verdict": {"type": "string"},
+                "strengths": {"type": "array", "items": {"type": "string"}},
+                "gaps": {"type": "array", "items": {"type": "string"}},
             },
-            "required": ["score", "reason"],
+            "required": ["score", "verdict", "strengths", "gaps"],
             "additionalProperties": False,
         },
     },
-    "required": ["advanced_questions", "action_recommendations", "jd_match"],
+    "required": ["headline", "advanced_questions", "action_recommendations", "jd_match"],
     "additionalProperties": False,
 }
 

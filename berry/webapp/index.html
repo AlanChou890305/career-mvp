@@ -100,14 +100,46 @@
   .plist li{font-size:13px;color:var(--sub);margin:3px 0}
   .perr{color:#ff3b30;font-size:13px}
   .sechead{font-size:13px;color:var(--sub2);font-weight:600;margin:22px 0 2px;padding:0 4px}
-  /* JD 適配分數 */
-  .match{background:var(--card);border-radius:14px;padding:16px;margin-top:2px;box-shadow:var(--shadow)}
-  .match .mscore{font-size:36px;font-weight:800;letter-spacing:-.02em;line-height:1}
-  .match .mscore small{font-size:15px;color:var(--sub2);font-weight:500;margin-left:2px}
-  .match .mbar{height:6px;border-radius:99px;background:var(--fill);overflow:hidden;margin:10px 0 10px}
-  .match .mbar>span{display:block;height:100%;background:var(--blue)}
-  .match .mreason{font-size:14px;color:var(--sub)}
-  .match .mnote{font-size:11px;color:var(--sub2);margin-top:8px}
+  /* 適配分析副標 */
+  #headline{font-size:15px;color:var(--sub);margin:0 0 16px}
+  /* 富適配卡 */
+  .match{background:var(--card);border-radius:16px;padding:18px;margin-top:2px;box-shadow:var(--shadow)}
+  .match-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .match-label{font-size:13px;color:var(--sub2);font-weight:600}
+  .match-verdict{font-size:19px;font-weight:800;letter-spacing:-.01em;margin-top:4px}
+  .match-score{font-size:38px;font-weight:800;letter-spacing:-.02em;line-height:1;white-space:nowrap}
+  .match-score small{font-size:15px;color:var(--sub2);font-weight:500}
+  .mbar{height:7px;border-radius:99px;background:var(--fill);overflow:hidden;margin-top:14px}
+  .mbar>span{display:block;height:100%}
+  .match-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+  .mc-h{font-size:13px;font-weight:700}
+  .mc-h.good{color:var(--green)} .mc-h.bad{color:var(--orange)}
+  .mc-l{margin:6px 0 0;padding-left:16px}
+  .mc-l li{font-size:13px;color:var(--sub);margin:4px 0;line-height:1.4}
+  .mnote{font-size:11px;color:var(--sub2);margin-top:14px}
+  /* 問題區標題 */
+  .qsec{display:flex;justify-content:space-between;align-items:baseline;margin:24px 4px 6px}
+  .qsec-t{font-size:20px;font-weight:800;letter-spacing:-.01em}
+  .qsec-c{font-size:13px;color:var(--sub2)}
+  /* 問題卡 */
+  .qcard{background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);margin:10px 0}
+  .qhead{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .qnum{width:24px;height:24px;border-radius:50%;background:var(--fill);color:var(--sub2);
+    font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .qtype{font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px}
+  .qtype.must{background:#ffefdd;color:#e07b00}
+  .qtype.deep{background:#d7f0e9;color:#0a9d78}
+  .qtype.warm{background:var(--fill);color:var(--sub2)}
+  .qcat{font-size:13px;color:var(--sub2);font-weight:500}
+  .qbody{font-size:16px;line-height:1.5}
+  .qacts{display:flex;gap:16px;margin-top:11px;flex-wrap:wrap}
+  .qlink{display:inline-flex;align-items:center;gap:5px;background:none;border:0;padding:0;
+    color:var(--blue);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer}
+  .qlink svg{width:13px;height:13px}
+  .qlink .chev{transition:transform .2s;font-size:11px}
+  .qlink.open .chev{transform:rotate(180deg)}
+  .qwhy-panel{font-size:13px;color:var(--sub);margin-top:11px;line-height:1.5;
+    background:var(--fill);border-radius:10px;padding:10px 12px}
   .rec{padding:13px 16px;display:flex;gap:10px;align-items:flex-start}
   .rec+.rec{border-top:1px solid var(--sep)}
   .chk{color:var(--green);flex:0 0 auto;font-weight:700;display:flex}
@@ -262,10 +294,11 @@
         <div class="ls" id="lstep">讀取你的背景與 JD⋯</div>
       </div>
       <div id="result-content" class="hide">
-        <div class="h1">會被追問</div>
-        <p class="lead"><span style="color:var(--orange)">●</span> 橘色是針對你經歷的追問。</p>
+        <div class="h1">適配分析</div>
+        <p class="lead" id="headline"></p>
         <div id="matchbox"></div>
-        <div class="group" id="questions"></div>
+        <div class="qsec"><span class="qsec-t">面試官可能會問</span><span class="qsec-c" id="qcount"></span></div>
+        <div id="questions"></div>
         <div id="streamnote" class="streamnote hide"><span class="spin"></span>AI 持續生成中⋯</div>
         <div class="sechead hide" id="rechead">準備建議</div>
         <div class="group hide" id="recs"></div>
@@ -591,6 +624,8 @@ function parseSSE(chunk){
 }
 // 開始串流結果：清空、露出問題區、其餘先藏
 function prepareStreaming(){
+  document.getElementById('headline').textContent='';
+  document.getElementById('qcount').textContent='';
   document.getElementById('matchbox').innerHTML='';
   document.getElementById('questions').innerHTML='';
   document.getElementById('recs').innerHTML='';
@@ -645,29 +680,40 @@ async function generate(){
   }finally{ stopSteps(); }
 }
 
+const TYPECLS={'必答':'must','深挖':'deep','暖身':'warm'};
 function makeQrow(it,i){
-  const el=document.createElement('div'); el.className='qrow qin';
-  el.innerHTML=`<div class="idx ${it.experience_probe?'star':''}">${i+1}</div>
-    <div class="qtext">${esc(it.question)}${it.experience_probe?'<span class="tag">經歷</span>':''}
-    <div class="qwhy">${esc(it.rationale||'')}</div>
-    <button class="pbtn" onclick="togglePractice(this)">${IC.edit}模擬回覆</button>
+  const el=document.createElement('div'); el.className='qcard qin';
+  const type=it.type||(it.experience_probe?'深挖':'暖身'), cls=TYPECLS[type]||'warm';
+  const cat=it.category?`<span class="qcat">${esc(it.category)}</span>`:'';
+  el.innerHTML=`<div class="qhead"><span class="qnum">${i+1}</span>
+      <span class="qtype ${cls}">${esc(type)}</span>${cat}</div>
+    <div class="qbody">${esc(it.question)}</div>
+    <div class="qacts">
+      <button class="qlink" onclick="toggleWhy(this)">為什麼問這題 <span class="chev">⌄</span></button>
+      <button class="qlink" onclick="togglePractice(this)">${IC.edit}模擬回覆</button>
+    </div>
+    <div class="qwhy-panel hide">${esc(it.rationale||'')}</div>
     <div class="practice hide">
       <textarea class="pans" placeholder="輸入你想怎麼回答這題⋯"></textarea>
       <button class="pgo" onclick="scoreAnswer(this)">送出評分</button>
       <div class="pfb"></div>
-    </div></div>`;
+    </div>`;
   el.dataset.q=it.question||'';
   return el;
 }
+function toggleWhy(btn){
+  btn.closest('.qcard').querySelector('.qwhy-panel').classList.toggle('hide');
+  btn.classList.toggle('open');
+}
 function togglePractice(btn){
-  const p=btn.parentNode.querySelector('.practice');
+  const p=btn.closest('.qcard').querySelector('.practice');
   const opening=p.classList.contains('hide');
   p.classList.toggle('hide');
   if(opening) p.querySelector('.pans').focus();
 }
 async function scoreAnswer(btn){
-  const panel=btn.closest('.practice'), qrow=btn.closest('.qrow');
-  const question=qrow.dataset.q||'', answer=panel.querySelector('.pans').value.trim();
+  const panel=btn.closest('.practice'), card=btn.closest('.qcard');
+  const question=card.dataset.q||'', answer=panel.querySelector('.pans').value.trim();
   const fb=panel.querySelector('.pfb');
   if(!answer){ fb.innerHTML='<div class="perr">請先輸入你的回答。</div>'; return; }
   btn.disabled=true; btn.innerHTML='<span class="spin"></span>評分中⋯'; fb.innerHTML='';
@@ -693,23 +739,36 @@ function renderFeedback(fb,d){
 function renderMatch(data){
   const mb=document.getElementById('matchbox'); mb.innerHTML='';
   const m=data.jd_match;
-  if(m && typeof m.score==='number' && m.score>0){
-    const s=Math.max(0,Math.min(100,m.score));
-    const col=s>=80?'var(--green)':s>=60?'var(--blue)':'var(--orange)';
-    mb.innerHTML=`<div class="sechead">與目標職位的適配 · 觀察值</div>
-      <div class="match">
-        <div class="mscore" style="color:${col}">${s}<small>分</small></div>
-        <div class="mbar"><span style="width:${s}%;background:${col}"></span></div>
-        <div class="mreason">${esc(m.reason||'')}</div>
-        <div class="mnote">觀察值，非錄取預測。</div>
-      </div>`;
-  }
+  if(!(m && typeof m.score==='number' && m.score>0)) return;
+  const s=Math.max(0,Math.min(100,m.score));
+  const col=s>=80?'var(--green)':s>=60?'var(--blue)':'var(--orange)';
+  const verdict=m.verdict||m.reason||'';
+  const li=arr=>(arr||[]).map(t=>`<li>${esc(t)}</li>`).join('');
+  const str=li(m.strengths), gap=li(m.gaps);
+  mb.innerHTML=`<div class="match">
+    <div class="match-top">
+      <div class="match-head"><div class="match-label">與目標職位的適配</div>
+        <div class="match-verdict">${esc(verdict)}</div></div>
+      <div class="match-score" style="color:${col}">${s}<small>/100</small></div>
+    </div>
+    <div class="mbar"><span style="width:${s}%;background:${col}"></span></div>
+    ${(str||gap)?`<div class="match-cols">
+      <div class="mc"><div class="mc-h good">＋ 你的優勢</div><ul class="mc-l">${str}</ul></div>
+      <div class="mc"><div class="mc-h bad">－ 主要落差</div><ul class="mc-l">${gap}</ul></div>
+    </div>`:''}
+    <div class="mnote">觀察值，非錄取預測。</div>
+  </div>`;
 }
 // 權威渲染：串流結束時用完整資料重畫一次，保證正確
 function render(data){
+  const h=data.headline||{};
+  document.getElementById('headline').textContent=(h.from&&h.to)?`${h.from} → ${h.to}`:'';
   renderMatch(data);
   const q=document.getElementById('questions'); q.innerHTML='';
-  (data.advanced_questions||[]).forEach((it,i)=>q.appendChild(makeQrow(it,i)));
+  const qs=data.advanced_questions||[];
+  qs.forEach((it,i)=>q.appendChild(makeQrow(it,i)));
+  const must=qs.filter(it=>it.type==='必答').length;
+  document.getElementById('qcount').textContent=qs.length?`共 ${qs.length} 題${must?' · '+must+' 題必答':''}`:'';
   const r=document.getElementById('recs'); r.innerHTML='';
   (data.action_recommendations||[]).forEach(t=>{
     const el=document.createElement('div'); el.className='rec';
