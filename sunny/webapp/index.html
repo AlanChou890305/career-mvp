@@ -7,15 +7,24 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="frame">
-  <div class="top">
-    <div class="brand">職涯<span>夥伴</span><span class="tag">mvp/sunny · onboarding → dashboard 走一遍</span></div>
-    <div class="pill" id="personaPill"></div>
+<div class="phone">
+  <div class="appbar">
+    <div class="appbar-top">
+      <div class="brand">👋 職涯<span>夥伴</span></div>
+      <div class="ava" id="avaBtn">S</div>
+    </div>
+    <div class="appbar-sub" id="personaPill"></div>
   </div>
-  <div class="stagebar" id="stagebar"></div>
-  <div class="body" id="stepBody"></div>
+
+  <div class="screen" id="screen"></div>
+
+  <div class="tabbar" id="tabbar"></div>
 </div>
+
+<div id="toastHost"></div>
+
 <script src="data.js"></script>
+<script src="heuristics.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
