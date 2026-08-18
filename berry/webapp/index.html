@@ -100,6 +100,28 @@
   .plist li{font-size:13px;color:var(--sub);margin:3px 0}
   .perr{color:#ff3b30;font-size:13px}
   .sechead{font-size:13px;color:var(--sub2);font-weight:600;margin:22px 0 2px;padding:0 4px}
+  /* 步驟分段控制 */
+  .steps{display:flex;background:var(--fill);border-radius:11px;padding:3px;margin:2px 0 20px}
+  .step{flex:1;border:0;background:none;border-radius:9px;padding:9px 6px;font-size:14px;
+    font-weight:600;color:var(--sub2);font-family:inherit;cursor:pointer}
+  .step.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  /* 準備清單進度 + 卡片 */
+  .prog{display:flex;align-items:center;gap:12px;margin:4px 0 14px}
+  .prog-bar{flex:1;height:7px;border-radius:99px;background:var(--fill);overflow:hidden}
+  .prog-bar>span{display:block;height:100%;width:0;background:var(--green);transition:width .25s}
+  .prog-n{font-size:13px;color:var(--sub2);font-weight:600;white-space:nowrap}
+  .prep{display:flex;gap:12px;background:var(--card);border-radius:16px;padding:16px;
+    box-shadow:var(--shadow);margin:10px 0}
+  .prep-check{flex:0 0 auto;width:24px;height:24px;border-radius:50%;border:2px solid var(--sep);
+    background:none;cursor:pointer;margin-top:1px;position:relative;padding:0}
+  .prep-check.done{background:var(--green);border-color:var(--green)}
+  .prep-check.done::after{content:"";position:absolute;left:7px;top:3px;width:5px;height:10px;
+    border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg)}
+  .prep-main{flex:1;min-width:0}
+  .prep-t{font-size:16px;font-weight:700;line-height:1.4}
+  .prep.done .prep-t{color:var(--sub2);text-decoration:line-through}
+  .prep-d{font-size:14px;color:var(--sub);margin-top:5px;line-height:1.5}
+  .prep-r{font-size:13px;color:var(--blue);font-weight:600;margin-top:8px}
   /* 適配分析副標 */
   #headline{font-size:15px;color:var(--sub);margin:0 0 16px}
   /* 富適配卡 */
@@ -294,15 +316,29 @@
         <div class="ls" id="lstep">讀取你的背景與 JD⋯</div>
       </div>
       <div id="result-content" class="hide">
-        <div class="h1">適配分析</div>
-        <p class="lead" id="headline"></p>
-        <div id="matchbox"></div>
-        <div class="qsec"><span class="qsec-t">面試官可能會問</span><span class="qsec-c" id="qcount"></span></div>
-        <div id="questions"></div>
-        <div id="streamnote" class="streamnote hide"><span class="spin"></span>AI 持續生成中⋯</div>
-        <div class="sechead hide" id="rechead">準備建議</div>
-        <div class="group hide" id="recs"></div>
-        <button class="link" onclick="show('input')">下一筆分析</button>
+        <div class="steps">
+          <button class="step on" id="s1btn" onclick="showStep(1)">1 · 適配與面試題</button>
+          <button class="step" id="s2btn" onclick="showStep(2)">2 · 準備清單</button>
+        </div>
+
+        <div id="step1">
+          <div class="h1">適配分析</div>
+          <p class="lead" id="headline"></p>
+          <div id="matchbox"></div>
+          <div class="qsec"><span class="qsec-t">面試官可能會問</span><span class="qsec-c" id="qcount"></span></div>
+          <div id="questions"></div>
+          <div id="streamnote" class="streamnote hide"><span class="spin"></span>AI 持續生成中⋯</div>
+          <button class="btn hide" id="tonext" onclick="showStep(2)">看我該怎麼準備 →</button>
+          <button class="link" onclick="show('input')">下一筆分析</button>
+        </div>
+
+        <div id="step2" class="hide">
+          <div class="h1">準備清單</div>
+          <p class="lead">依落差排序，做完這幾件事，就能回答上一頁的所有問題。</p>
+          <div class="prog"><div class="prog-bar"><span id="progbar"></span></div><span class="prog-n" id="progn">0/0</span></div>
+          <div id="preplist"></div>
+          <button class="link" onclick="showStep(1)">← 回面試題</button>
+        </div>
       </div>
     </section>
 
@@ -624,13 +660,13 @@ function parseSSE(chunk){
 }
 // 開始串流結果：清空、露出問題區、其餘先藏
 function prepareStreaming(){
+  showStep(1);
   document.getElementById('headline').textContent='';
   document.getElementById('qcount').textContent='';
   document.getElementById('matchbox').innerHTML='';
   document.getElementById('questions').innerHTML='';
-  document.getElementById('recs').innerHTML='';
-  document.getElementById('rechead').classList.add('hide');
-  document.getElementById('recs').classList.add('hide');
+  document.getElementById('preplist').innerHTML='';
+  document.getElementById('tonext').classList.add('hide');
   document.getElementById('streamnote').classList.remove('hide');
 }
 
@@ -769,14 +805,46 @@ function render(data){
   qs.forEach((it,i)=>q.appendChild(makeQrow(it,i)));
   const must=qs.filter(it=>it.type==='必答').length;
   document.getElementById('qcount').textContent=qs.length?`共 ${qs.length} 題${must?' · '+must+' 題必答':''}`:'';
-  const r=document.getElementById('recs'); r.innerHTML='';
-  (data.action_recommendations||[]).forEach(t=>{
-    const el=document.createElement('div'); el.className='rec';
-    el.innerHTML=`<span class="chk">${IC.check}</span><div>${esc(t)}</div>`; r.appendChild(el);
-  });
+  renderPrep(data);
   document.getElementById('streamnote').classList.add('hide');
-  document.getElementById('rechead').classList.remove('hide');
-  document.getElementById('recs').classList.remove('hide');
+  document.getElementById('tonext').classList.remove('hide');
+  showStep(1);
+}
+// 步驟切換：1 適配與面試題 / 2 準備清單
+function showStep(n){
+  document.getElementById('step1').classList.toggle('hide',n!==1);
+  document.getElementById('step2').classList.toggle('hide',n!==2);
+  document.getElementById('s1btn').classList.toggle('on',n===1);
+  document.getElementById('s2btn').classList.toggle('on',n===2);
+  document.querySelector('.scroll').scrollTop=0;
+}
+function renderPrep(data){
+  const box=document.getElementById('preplist'); box.innerHTML='';
+  let items=data.prep_items;
+  if(!items||!items.length) // 舊紀錄相容
+    items=(data.action_recommendations||[]).map(t=>({title:t,description:'',related_questions:[],category:''}));
+  items.forEach(it=>{
+    const rel=(it.related_questions||[]).length?`對應第 ${it.related_questions.join('、')} 題`:'';
+    const cat=it.category?`（${esc(it.category)}）`:'';
+    const el=document.createElement('div'); el.className='prep';
+    el.innerHTML=`<button class="prep-check" onclick="togglePrep(this)" aria-label="完成"></button>
+      <div class="prep-main"><div class="prep-t">${esc(it.title)}</div>
+        ${it.description?`<div class="prep-d">${esc(it.description)}</div>`:''}
+        ${rel?`<div class="prep-r">${rel}${cat}</div>`:''}</div>`;
+    box.appendChild(el);
+  });
+  updateProg();
+}
+function togglePrep(btn){
+  btn.classList.toggle('done');
+  btn.closest('.prep').classList.toggle('done');
+  updateProg();
+}
+function updateProg(){
+  const total=document.querySelectorAll('#preplist .prep').length;
+  const done=document.querySelectorAll('#preplist .prep-check.done').length;
+  document.getElementById('progn').textContent=`${done}/${total}`;
+  document.getElementById('progbar').style.width=total?(done/total*100)+'%':'0%';
 }
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 

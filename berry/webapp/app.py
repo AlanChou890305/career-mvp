@@ -42,8 +42,13 @@ to：幾個字寫出他的目標職位（例如「支付產品 PM」）。
 - experience_probe：若這題非讀懂他的背景就問不出來設為 true，通用題 false。
 - rationale：一句話說明為什麼會問（從背景哪一點推論出來）。
 
-步驟四：行動推薦 3–5 條
-針對上面的問題，給具體、可執行的面試前準備建議。不要講「多練習」這種空話。
+步驟四：準備清單 prep_items（3–5 項）
+把「要準備什麼」拆成 3–5 個可執行的任務，依「對面試落差的重要性」由高到低排序。
+每項：
+- title：一句話任務名（例如「把搜尋改版整理成一頁小抄」）。
+- description：具體要準備什麼內容，不要空話。
+- related_questions：這項準備對應到上面第幾題（用題號整數，可多題）。
+- category：對應主題，跟該題的 category 一致。
 
 步驟五：jd_match 目標職位適配（觀察值，非錄取預測）
 - score：0–100 的整數。
@@ -81,7 +86,20 @@ OUTPUT_SCHEMA = {
                 "additionalProperties": False,
             },
         },
-        "action_recommendations": {"type": "array", "items": {"type": "string"}},
+        "prep_items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "description": {"type": "string"},
+                    "related_questions": {"type": "array", "items": {"type": "integer"}},
+                    "category": {"type": "string"},
+                },
+                "required": ["title", "description", "related_questions", "category"],
+                "additionalProperties": False,
+            },
+        },
         "jd_match": {
             "type": "object",
             "properties": {
@@ -94,7 +112,7 @@ OUTPUT_SCHEMA = {
             "additionalProperties": False,
         },
     },
-    "required": ["headline", "advanced_questions", "action_recommendations", "jd_match"],
+    "required": ["headline", "advanced_questions", "prep_items", "jd_match"],
     "additionalProperties": False,
 }
 
