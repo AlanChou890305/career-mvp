@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>面試教練</title>
+<title>求職分析</title>
 <style>
   :root{
     --bg:#f2f2f7; --card:#fff; --ink:#000; --sub:#3c3c4399; --sub2:#8a8a8e;
@@ -41,6 +41,11 @@
   .field+.field{border-top:1px solid var(--sep)}
   .field label{display:block;font-size:12px;color:var(--sub2);font-weight:600;
     letter-spacing:.02em;text-transform:none;margin-bottom:4px}
+  .label-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .label-row label{margin-bottom:0}
+  .minibtn{background:var(--fill);border:0;border-radius:99px;padding:4px 11px;font-size:12px;
+    font-weight:600;color:var(--blue);font-family:inherit;cursor:pointer}
+  .minibtn:active{opacity:.6}
   textarea{width:100%;border:0;background:transparent;color:var(--ink);font:inherit;
     resize:none;padding:0;min-height:78px;outline:none}
   .caption{color:var(--sub2);font-size:12px;padding:6px 16px 0}
@@ -61,6 +66,36 @@
   .chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
   .chip:active{opacity:.7}
   .skillhint{font-size:13px;color:var(--sub2)}
+  /* 個人資料 */
+  .field.row input.pfin{border:0;background:none;font:inherit;color:var(--ink);
+    text-align:right;outline:none;max-width:200px;min-width:0;flex:1}
+  .addrow{display:flex;gap:8px;margin-top:12px}
+  .addrow input{flex:1;min-width:0;border:1px solid var(--sep);border-radius:9px;padding:8px 10px;
+    font:inherit;font-size:14px;background:var(--card);color:var(--ink);outline:none}
+  .addrow input:focus{border-color:var(--blue)}
+  .addrow button{border:0;background:var(--fill);border-radius:9px;padding:0 15px;font-size:20px;
+    color:var(--blue);cursor:pointer;flex:0 0 auto}
+  .pf-saved{text-align:center;font-size:12px;color:var(--green);height:16px;margin-top:8px}
+  .pf-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
+    background:none;border:0;padding:14px 16px;font-family:inherit;text-align:left;cursor:pointer}
+  .pf-sum-t{font-size:16px;font-weight:600;color:var(--ink)}
+  .pf-sum-d{font-size:13px;color:var(--sub2);margin-top:2px}
+  .pf-edit-label{font-size:14px;color:var(--blue);font-weight:600;flex:0 0 auto}
+  .pf-form{border-top:1px solid var(--sep)}
+  /* 適配分數趨勢 */
+  .trend{background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);position:relative}
+  .tdot{cursor:pointer}
+  .trend-tip{position:absolute;transform:translate(-50%,-100%);background:var(--ink);color:#fff;
+    padding:7px 10px;border-radius:9px;font-size:12px;pointer-events:none;max-width:180px;
+    text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.18);z-index:5}
+  .trend-tip .tip-t{font-weight:600;line-height:1.3}
+  .trend-tip .tip-s{color:#ffffffb0;margin-top:2px;font-size:11px}
+  .trend-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .trend-t{font-size:15px;font-weight:700}
+  .trend-meta{font-size:13px;color:var(--sub2);font-weight:600}
+  .trend-svg{width:100%;height:auto;display:block}
+  .trend-x{display:flex;justify-content:space-between;font-size:11px;color:var(--sub2);margin-top:2px;padding:0 6px}
+  .trend-empty{font-size:13px;color:var(--sub2);padding:14px 0;text-align:center}
   /* 按鈕 */
   .btn{display:block;width:100%;border:0;border-radius:14px;padding:15px;font-size:17px;
     font-weight:600;cursor:pointer;background:var(--blue);color:#fff;margin-top:16px}
@@ -230,7 +265,7 @@
   .accu .cb{width:100%;max-width:46px;border-radius:8px 8px 0 0;background:linear-gradient(180deg,#4da3ff,var(--blue))}
   .accu .cl{font-size:11px;color:var(--sub2);text-align:center;line-height:1.2}
   /* 底部分頁列 */
-  .tabbar{position:absolute;left:0;right:0;bottom:0;display:flex;
+  .tabbar{position:fixed;left:0;right:0;bottom:0;width:100%;display:flex;z-index:20;
     background:color-mix(in srgb,var(--card) 82%,transparent);
     backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
     border-top:1px solid var(--sep);padding-bottom:env(safe-area-inset-bottom)}
@@ -265,11 +300,12 @@
 
     <!-- ① 輸入 -->
     <section id="input" class="pad">
-      <div class="h1">面試教練</div>
+      <div class="h1">求職分析</div>
       <p class="lead">上場前，先讓教練幫你抓出會被追問的地方。</p>
       <div class="group">
         <div class="field">
-          <label>你的背景 · 經歷</label>
+          <div class="label-row"><label>你的背景 · 經歷</label>
+            <button class="minibtn" onclick="fillBgFromProfile()">＋ 帶入我的資料</button></div>
           <textarea id="bg" placeholder="例如：電商 PM 4.5 年，傳播系非工程背景⋯⋯"></textarea>
         </div>
       </div>
@@ -342,20 +378,39 @@
       </div>
     </section>
 
-    <!-- ③ 成效 -->
+    <!-- ③ 我的（個人資料 + 分析紀錄） -->
     <section id="dash" class="pad hide">
-      <div class="h1">成效</div>
-      <p class="lead">你每一次的分析都會記錄在這裡，點開可以回顧。</p>
+      <div class="h1">我的</div>
 
-      <div class="accu-now"><span class="n" id="count">0</span>
-        <span class="t">累積分析筆數<br>每一筆都被記住，之後可回顧</span></div>
+      <!-- 精簡基本資料：預設收合，點編輯才展開 -->
+      <div class="group">
+        <button class="pf-summary" onclick="togglePfEdit()">
+          <div class="pf-sum-main">
+            <div class="pf-sum-t" id="pf-sum-t">建立基本資料</div>
+            <div class="pf-sum-d" id="pf-sum-d">填一次，之後每次分析都更懂你</div>
+          </div>
+          <span class="pf-edit-label" id="pf-edit-label">編輯 ⌄</span>
+        </button>
+        <div id="pf-form" class="pf-form hide">
+          <div class="field row"><label>姓名</label><input class="pfin" id="pf-name" placeholder="你的名字"></div>
+          <div class="field row"><label>年齡</label><input class="pfin" id="pf-age" type="number" inputmode="numeric" placeholder="—"></div>
+          <div class="field"><label>求職開放程度</label><div id="pf-open" class="chips"></div></div>
+          <div class="field"><label>職涯目標</label><textarea id="pf-goal" style="min-height:60px" placeholder="用自己的話寫下你想往哪走⋯"></textarea></div>
+          <div class="field row"><label>目前職類</label><div class="selwrap"><select id="pf-cur-role"></select></div></div>
+          <div class="field"><label>擅長技能／工具</label><div id="pf-skills" class="chips"></div></div>
+          <div class="field row"><label>目標職類</label><div class="selwrap"><select id="pf-tgt-role"></select></div></div>
+          <div class="field"><label>產業領域偏好</label><div id="pf-industries" class="chips"></div>
+            <div class="addrow"><input id="pf-industry-new" placeholder="自訂產業"><button onclick="addCustom('industries')">＋</button></div></div>
+          <div class="field"><button class="btn" onclick="useProfile()">用這份資料開始分析</button>
+            <div class="pf-saved" id="pf-saved"></div></div>
+        </div>
+      </div>
+
+      <div class="sechead">數據概覽</div>
+      <div id="stats"></div>
 
       <div class="sechead">分析紀錄</div>
       <div id="history"></div>
-
-      <div class="sechead">護城河閉環（未來才做）</div>
-      <div class="tile locked"><div class="k">投遞進度追蹤 <svg class="lockic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></div>
-        <div class="d">跨時間追蹤你的投遞與面試結果，餵回引擎讓命中率越來越準。需登入與資料庫，未來才做。</div></div>
     </section>
 
   </div>
@@ -363,7 +418,7 @@
   <nav class="tabbar">
     <button class="tab on" id="t-input" onclick="show('input')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.7 12 3.5l9 7.2"/><path d="M5.2 9.5V20a1 1 0 0 0 1 1h11.6a1 1 0 0 0 1-1V9.5"/><path d="M9.5 21v-6.2h5V21"/></svg></span>首頁</button>
     <button class="tab" id="t-result" onclick="show('result')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.5a8 8 0 0 1-11.6 7.1L3.5 20l1.4-5.3A8 8 0 1 1 20.5 11.5Z"/></svg></span>結果</button>
-    <button class="tab" id="t-dash" onclick="show('dash')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M8 16v-4"/><path d="M13 16V8"/><path d="M18 16v-6"/></svg></span>成效</button>
+    <button class="tab" id="t-dash" onclick="show('dash')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></span>我的</button>
   </nav>
 </div>
 
@@ -502,6 +557,167 @@ function composeJD(role,level,skills,jdText){
 }
 let ctx={background:"",jd:""}; // 模擬回覆評分要用的背景/職位上下文
 
+// ── 個人資料（localStorage，本機） ──
+const PKEY="berry_profile";
+const OPENNESS=["積極找工作","被動考慮機會","暫不找工作"];
+const PF_SKILLS=["數據分析","A/B 測試","SQL","Python","跨部門協作","專案管理","用戶研究","Roadmap",
+  "Figma","Design System","React","Vue","TypeScript","JavaScript","Golang","Java","PHP","Node.js",
+  "微服務","系統設計","機器學習","資料視覺化","簡報表達","英文溝通"];
+const PF_INDUSTRIES=["電商","金融科技","SaaS","遊戲","內容媒體","AI","硬體製造","教育","醫療健康","區塊鏈","旅遊","廣告行銷"];
+function loadProfile(){try{return JSON.parse(localStorage.getItem(PKEY))||{}}catch(e){return{}}}
+function saveProfile(){try{localStorage.setItem(PKEY,JSON.stringify(profile))}catch(e){}}
+let profile=loadProfile();
+let savedTimer;
+function flashSaved(){renderPfSummary();const el=document.getElementById('pf-saved');if(!el)return;
+  el.textContent='已儲存 ✓';clearTimeout(savedTimer);savedTimer=setTimeout(()=>el.textContent='',1500);}
+function togglePfEdit(){
+  const f=document.getElementById('pf-form'), open=f.classList.contains('hide');
+  f.classList.toggle('hide');
+  document.getElementById('pf-edit-label').textContent=open?'收合 ⌃':'編輯 ⌄';
+}
+function renderPfSummary(){
+  const t=document.getElementById('pf-sum-t'), d=document.getElementById('pf-sum-d'); if(!t) return;
+  const tgt=profile.tgtRole&&ROLES[profile.tgtRole]?ROLES[profile.tgtRole].name:'';
+  if(!(profile.name||tgt||profile.curRole)){
+    t.textContent='建立基本資料'; d.textContent='填一次，之後每次分析都更懂你'; return;
+  }
+  t.textContent=profile.name||'我的基本資料';
+  const bits=[];
+  if(profile.age) bits.push(profile.age+' 歲');
+  if(tgt) bits.push('目標：'+tgt);
+  d.textContent=bits.join(' · ')||'已填寫';
+}
+function trendSvg(scores){
+  const W=320,H=120,pt=12,pb=8,pl=22,pr=8,n=scores.length;
+  const x=i=>pl+(n<=1?(W-pl-pr)/2:(i/(n-1))*(W-pl-pr));
+  const y=s=>pt+(1-s/100)*(H-pt-pb);
+  const pts=scores.map((s,i)=>[x(i),y(s)]);
+  const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const area=`M${x(0).toFixed(1)} ${(H-pb).toFixed(1)} `+pts.map(p=>'L'+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ')+` L${x(n-1).toFixed(1)} ${(H-pb).toFixed(1)} Z`;
+  const dots=pts.map((p,i)=>
+    `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="9" fill="transparent" class="tdot" data-i="${i}"/>`+
+    `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="var(--blue)" pointer-events="none"/>`).join('');
+  const grid=[0,50,100].map(v=>{const yy=y(v).toFixed(1);
+    return `<line x1="${pl}" y1="${yy}" x2="${W-pr}" y2="${yy}" stroke="var(--sep)" stroke-width="1" stroke-dasharray="2 3"/>`+
+      `<text x="2" y="${(y(v)+3).toFixed(1)}" font-size="9" fill="var(--sub2)">${v}</text>`;}).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="trend-svg">${grid}
+    <path d="${area}" fill="var(--blue)" opacity="0.09"/>
+    <path d="${line}" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}</svg>`;
+}
+let trendPoints=[];
+function attachTrendTips(){
+  const trend=document.querySelector('#stats .trend'); if(!trend) return;
+  let tip=trend.querySelector('.trend-tip');
+  if(!tip){ tip=document.createElement('div'); tip.className='trend-tip hide'; trend.appendChild(tip); }
+  const show=dot=>{
+    const p=trendPoints[+dot.dataset.i]; if(!p) return;
+    tip.innerHTML=`<div class="tip-t">${esc(p.title)}</div><div class="tip-s">適配 ${p.score} 分</div>`;
+    const cr=dot.getBoundingClientRect(), tr=trend.getBoundingClientRect();
+    tip.style.left=(cr.left+cr.width/2-tr.left)+'px';
+    tip.style.top=(cr.top-tr.top-6)+'px';
+    tip.classList.remove('hide');
+  };
+  trend.querySelectorAll('.tdot').forEach(dot=>{
+    dot.addEventListener('mouseenter',()=>show(dot));
+    dot.addEventListener('mouseleave',()=>tip.classList.add('hide'));
+    dot.addEventListener('click',()=>show(dot));  // 觸控裝置也能點
+  });
+}
+function renderStats(){
+  const box=document.getElementById('stats'); if(!box) return;
+  const list=loadHistory(), count=list.length;
+  const recs=list.slice().reverse().filter(r=>r.data&&r.data.jd_match&&typeof r.data.jd_match.score==='number'&&r.data.jd_match.score>0);
+  trendPoints=recs.map(r=>({score:r.data.jd_match.score,title:titleOf(r)}));
+  const scores=trendPoints.map(p=>p.score);
+  const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):null;
+  const tiles=`<div class="tiles">
+    <div class="tile"><div class="k">已分析</div><div class="v">${count}<small> 筆</small></div></div>
+    <div class="tile"><div class="k">平均適配</div><div class="v">${avg!=null?avg:'—'}<small>${avg!=null?' 分':''}</small></div></div>
+  </div>`;
+  const chart=scores.length
+    ? `<div class="trend"><div class="trend-top"><span class="trend-t">適配分數趨勢</span></div>
+        ${trendSvg(scores)}<div class="trend-x"><span>最早</span><span>最新</span></div></div>`
+    : `<div class="trend"><div class="trend-top"><span class="trend-t">適配分數趨勢</span></div>
+        <div class="trend-empty">完成分析後，這裡會畫出你的適配分數變化。</div></div>`;
+  box.innerHTML=tiles+chart;
+  if(scores.length) attachTrendTips();
+}
+function renderChipset(id,all,selected,onToggle){
+  const box=document.getElementById(id); if(!box) return;
+  box.innerHTML=all.map(s=>`<button type="button" class="chip${selected.includes(s)?' on':''}" data-v="${esc(s)}">${esc(s)}</button>`).join('');
+  box.querySelectorAll('.chip').forEach(c=>c.onclick=()=>onToggle(c.dataset.v));
+}
+function renderOpenness(){
+  renderChipset('pf-open',OPENNESS,profile.openness?[profile.openness]:[],v=>{
+    profile.openness=profile.openness===v?'':v; saveProfile(); renderOpenness(); flashSaved();});
+}
+function renderPfSkills(){
+  const box=document.getElementById('pf-skills'); if(!box) return;
+  const role=profile.curRole;
+  if(!role||!ROLES[role]){ box.innerHTML='<div class="skillhint">選好目前職類後，這裡會列出相關技能</div>'; return; }
+  renderChipset('pf-skills',ROLES[role].skills,profile.skills||[],v=>{
+    profile.skills=profile.skills||[]; const i=profile.skills.indexOf(v);
+    if(i>=0) profile.skills.splice(i,1); else profile.skills.push(v);
+    saveProfile(); renderPfSkills(); flashSaved();});
+}
+function renderPfIndustries(){
+  const all=[...PF_INDUSTRIES,...(profile.industries||[]).filter(s=>!PF_INDUSTRIES.includes(s))];
+  renderChipset('pf-industries',all,profile.industries||[],v=>{
+    profile.industries=profile.industries||[]; const i=profile.industries.indexOf(v);
+    if(i>=0) profile.industries.splice(i,1); else profile.industries.push(v);
+    saveProfile(); renderPfIndustries(); flashSaved();});
+}
+function addCustom(kind){
+  const input=document.getElementById(kind==='skills'?'pf-skill-new':'pf-industry-new');
+  const v=input.value.trim().replace(/["']/g,''); if(!v) return;
+  const arr=kind==='skills'?(profile.skills=profile.skills||[]):(profile.industries=profile.industries||[]);
+  if(!arr.includes(v)) arr.push(v);
+  saveProfile(); input.value='';
+  kind==='skills'?renderPfSkills():renderPfIndustries(); flashSaved();
+}
+function initProfile(){
+  ['pf-cur-role','pf-tgt-role'].forEach(id=>{
+    document.getElementById(id).innerHTML='<option value="">選擇職類…</option>'+
+      Object.entries(ROLES).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('');
+  });
+  [['pf-name','name'],['pf-age','age'],['pf-goal','goal'],
+   ['pf-cur-role','curRole'],['pf-tgt-role','tgtRole']].forEach(([id,key])=>{
+    const el=document.getElementById(id); el.value=profile[key]||'';
+    const h=()=>{profile[key]=el.value;saveProfile();flashSaved();};
+    el.addEventListener('input',h); el.addEventListener('change',h);
+  });
+  document.getElementById('pf-cur-role').addEventListener('change',()=>{profile.skills=[];saveProfile();renderPfSkills();});
+  renderOpenness(); renderPfSkills(); renderPfIndustries(); renderPfSummary();
+}
+// 用個人資料一鍵帶入首頁分析
+function profileToBg(){
+  const parts=[];
+  if(profile.curRole&&ROLES[profile.curRole]) parts.push('目前職類：'+ROLES[profile.curRole].name);
+  if(profile.age) parts.push(profile.age+' 歲');
+  if(profile.goal) parts.push('職涯目標：'+profile.goal);
+  if((profile.skills||[]).length) parts.push('擅長：'+profile.skills.join('、'));
+  if((profile.industries||[]).length) parts.push('產業偏好：'+profile.industries.join('、'));
+  return parts.join('。')+(parts.length?'。':'');
+}
+function useProfile(){
+  if(profile.tgtRole&&ROLES[profile.tgtRole]){
+    document.getElementById('role').value=profile.tgtRole; renderSkills();
+    (profile.skills||[]).forEach(s=>{const c=document.querySelector(`#skills .chip[data-skill="${s.replace(/"/g,'\\"')}"]`); if(c) c.classList.add('on');});
+  }
+  const bg=document.getElementById('bg'); bg.value=profileToBg();
+  grow(bg); grow(document.getElementById('jd')); syncBtn(); show('input'); bg.focus();
+}
+// 首頁背景欄的「帶入我的資料」小鈕
+function fillBgFromProfile(){
+  const text=profileToBg(), err=document.getElementById('err');
+  if(!text){ err.textContent='你還沒填「我的」基本資料，先到「我的」分頁填一下吧。'; err.classList.remove('hide'); return; }
+  err.classList.add('hide');
+  const bg=document.getElementById('bg');
+  bg.value=bg.value.trim()?(bg.value.trim()+'\n'+text):text;
+  grow(bg); syncBtn(); bg.focus();
+}
+
 // ── 分析紀錄（存在這台瀏覽器的 localStorage，不需後端） ──
 const HKEY="berry_history";
 function loadHistory(){try{return JSON.parse(localStorage.getItem(HKEY))||[]}catch(e){return[]}}
@@ -575,7 +791,7 @@ function deleteHistory(i,e){
 }
 function renderDash(){
   const list=loadHistory();
-  document.getElementById('count').textContent=list.length;
+  renderStats();
   const h=document.getElementById('history');
   if(!list.length){
     h.innerHTML=`<div class="empty"><div class="ei">${IC.chart}</div>
@@ -857,6 +1073,7 @@ for(const id of ['bg','jd']){
   });
 }
 initSelectors();
+initProfile();
 syncBtn();
 setResultState('empty');
 renderDash(); // 頁面載入時就把先前存的紀錄畫出來
