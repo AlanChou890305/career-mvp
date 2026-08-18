@@ -77,6 +77,48 @@ OUTPUT_SCHEMA = {
     "additionalProperties": False,
 }
 
+# 模擬回覆評分：讀背景＋職位＋題目＋候選人草稿回答，給分數與回饋
+EVAL_SYSTEM_PROMPT = """你是一位嚴格但具建設性的面試教練。以下會給你候選人的背景、應徵職位、一道面試官可能追問的問題，以及候選人草擬的回答。
+
+請評估這個回答：
+- score：0–100 的整數，評估這個回答在真實面試中的說服力。
+- comment：一句話總評。
+- strengths：2–3 點答得好的地方，要具體、引用他回答裡的內容。
+- improvements：2–3 點可以更好的地方，說明面試官其實想聽到什麼（例如要有具體數字、用 STAR 結構、講清楚你的角色與決策、避免空泛）。
+
+若回答空泛、沒有具體事例或數字，分數要如實偏低，不要客套。全部用繁體中文。"""
+
+EVAL_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "score": {"type": "integer"},
+        "comment": {"type": "string"},
+        "strengths": {"type": "array", "items": {"type": "string"}},
+        "improvements": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["score", "comment", "strengths", "improvements"],
+    "additionalProperties": False,
+}
+
+
+def evaluate(background: str, jd: str, question: str, answer: str) -> dict:
+    client = anthropic.Anthropic()
+    user_text = (
+        f"候選人背景：\n{background or '（未提供）'}\n\n"
+        f"應徵職位：\n{jd or '（未提供）'}\n\n"
+        f"面試問題：\n{question}\n\n"
+        f"候選人的回答：\n{answer}"
+    )
+    resp = client.messages.create(
+        model=MODEL,
+        max_tokens=1500,
+        system=EVAL_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_text}],
+        output_config={"format": {"type": "json_schema", "schema": EVAL_SCHEMA}},
+    )
+    text = next(b.text for b in resp.content if b.type == "text")
+    return json.loads(text)
+
 
 def generate(background: str, jd: str) -> dict:
     client = anthropic.Anthropic()
@@ -153,7 +195,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": "not found"})
 
     def do_POST(self):
-        if self.path != "/api/generate":
+        if self.path not in ("/api/generate", "/api/evaluate"):
             self._send(404, {"error": "not found"})
             return
         if not os.environ.get("ANTHROPIC_API_KEY"):
@@ -163,6 +205,21 @@ class Handler(BaseHTTPRequestHandler):
         payload = json.loads(self.rfile.read(length) or b"{}")
         background = (payload.get("background") or "").strip()
         jd = (payload.get("jd") or "").strip()
+
+        if self.path == "/api/evaluate":
+            question = (payload.get("question") or "").strip()
+            answer = (payload.get("answer") or "").strip()
+            if not answer:
+                self._send(400, {"error": "請先輸入你的回答。"})
+                return
+            try:
+                self._send(200, evaluate(background, jd, question, answer))
+            except anthropic.AuthenticationError:
+                self._send(401, {"error": "API 金鑰無效，請確認 ANTHROPIC_API_KEY。"})
+            except Exception as e:  # noqa: BLE001
+                self._send(500, {"error": f"評分失敗：{e}"})
+            return
+
         if not background:
             self._send(400, {"error": "請至少填寫候選人背景。"})
             return

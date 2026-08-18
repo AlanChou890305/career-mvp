@@ -44,6 +44,23 @@
   textarea{width:100%;border:0;background:transparent;color:var(--ink);font:inherit;
     resize:none;padding:0;min-height:78px;outline:none}
   .caption{color:var(--sub2);font-size:12px;padding:6px 16px 0}
+  /* 結構化目標職位：下拉列 + 技能 chip */
+  .field.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .field.row>label{margin-bottom:0;font-size:15px;font-weight:400;color:var(--ink)}
+  .selwrap{position:relative;display:inline-flex;align-items:center;
+    background:var(--fill);border-radius:10px;transition:background .15s}
+  .selwrap:active{background:#7878802e}
+  select{appearance:none;-webkit-appearance:none;border:0;background:transparent;font:inherit;
+    color:var(--ink);font-weight:500;padding:9px 34px 9px 14px;cursor:pointer;outline:none;max-width:240px}
+  .selwrap::after{content:"";position:absolute;right:11px;top:50%;transform:translateY(-50%);
+    width:11px;height:14px;pointer-events:none;background-repeat:no-repeat;background-position:center;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='14' viewBox='0 0 24 24' fill='none' stroke='%23007aff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 9l4-4 4 4'/%3E%3Cpath d='M16 15l-4 4-4-4'/%3E%3C/svg%3E")}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+  .chip{border:1px solid var(--sep);background:var(--card);color:var(--ink);border-radius:99px;
+    padding:7px 13px;font-size:14px;font-family:inherit;cursor:pointer;line-height:1.1}
+  .chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .chip:active{opacity:.7}
+  .skillhint{font-size:13px;color:var(--sub2)}
   /* 按鈕 */
   .btn{display:block;width:100%;border:0;border-radius:14px;padding:15px;font-size:17px;
     font-weight:600;cursor:pointer;background:var(--blue);color:#fff;margin-top:16px}
@@ -61,6 +78,27 @@
   .qtext{flex:1}
   .qwhy{color:var(--sub);font-size:13px;margin-top:3px}
   .tag{font-size:11px;color:var(--orange);font-weight:600;margin-left:6px;white-space:nowrap}
+  /* 模擬回覆 + 評分 */
+  .pbtn{display:inline-flex;align-items:center;gap:5px;margin-top:9px;background:none;border:0;
+    padding:0;color:var(--blue);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer}
+  .pbtn svg{width:13px;height:13px}
+  .pbtn:active{opacity:.5}
+  .practice{margin-top:10px}
+  .pans{width:100%;border:1px solid var(--sep);border-radius:10px;background:var(--card);
+    color:var(--ink);font:inherit;font-size:14px;padding:10px;min-height:74px;resize:none;outline:none}
+  .pans:focus{border-color:var(--blue)}
+  .pgo{margin-top:8px;background:var(--blue);color:#fff;border:0;border-radius:10px;
+    padding:9px 18px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
+  .pgo:active{opacity:.8} .pgo:disabled{opacity:.5}
+  .pfb:not(:empty){margin-top:12px;padding-top:12px;border-top:1px solid var(--sep)}
+  .pscore{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .pscore small{font-size:13px;color:var(--sub2);font-weight:500;margin-left:2px}
+  .pcomment{font-size:14px;color:var(--ink);margin-top:4px}
+  .psec{font-size:12px;font-weight:700;margin-top:11px}
+  .psec.good{color:var(--green)} .psec.bad{color:var(--orange)}
+  .plist{margin:4px 0 0;padding-left:18px}
+  .plist li{font-size:13px;color:var(--sub);margin:3px 0}
+  .perr{color:#ff3b30;font-size:13px}
   .sechead{font-size:13px;color:var(--sub2);font-weight:600;margin:22px 0 2px;padding:0 4px}
   /* JD 適配分數 */
   .match{background:var(--card);border-radius:14px;padding:16px;margin-top:2px;box-shadow:var(--shadow)}
@@ -180,12 +218,31 @@
           <label>你的背景 · 經歷</label>
           <textarea id="bg" placeholder="例如：電商 PM 4.5 年，傳播系非工程背景⋯⋯"></textarea>
         </div>
+      </div>
+
+      <div class="sechead">目標職位</div>
+      <div class="group">
+        <div class="field row">
+          <label>職位</label>
+          <div class="selwrap"><select id="role" onchange="onRoleChange()"></select></div>
+        </div>
+        <div class="field row">
+          <label>階級</label>
+          <div class="selwrap"><select id="level"></select></div>
+        </div>
         <div class="field">
-          <label>目標職位 · JD（可留空）</label>
-          <textarea id="jd" style="min-height:60px" placeholder="貼上要面試的職位描述"></textarea>
+          <label>相關技能（可複選）</label>
+          <div id="skills" class="chips"></div>
         </div>
       </div>
-      <div class="caption">越具體，追問越準。⌘／Ctrl + Enter 也能送出。</div>
+
+      <div class="group">
+        <div class="field">
+          <label>職缺描述 JD（選填）</label>
+          <textarea id="jd" style="min-height:60px" placeholder="貼上這個職缺的 JD 內容，分析會更貼近該公司⋯"></textarea>
+        </div>
+      </div>
+      <div class="caption">填得越具體，追問越準。⌘／Ctrl + Enter 送出。</div>
       <button class="btn" id="go" onclick="generate()">產生分析</button>
       <button class="link" onclick="fillSample()">填入範例</button>
       <div id="err" class="err hide"></div>
@@ -242,36 +299,169 @@
 </div>
 
 <script>
-const SAMPLE_BG="電商 PM 經驗 4.5 年，大學傳播系（非工程背景），多益 790。曾主導過搜尋產品改版，帶跨部門把轉換率往上拉。想轉往互聯網／軟體產品經理。";
-const SAMPLE_JD="Payment Product Manager：負責支付／金流產品規劃與迭代，與工程、風控、數據團隊協作，需 3 年以上 PM 經驗。";
+// 5 組範例，隨機輪替（涵蓋不同職位）
+const SAMPLES=[
+  {
+    bg:"電商 PM 經驗 4.5 年，大學傳播系（非工程背景），多益 790。曾主導過搜尋產品改版，帶跨部門把轉換率往上拉。想轉往互聯網／軟體產品經理。",
+    role:"pm", level:"senior", skills:["數據分析","A/B 測試","跨部門協作"],
+    jd:`【Payment Product Manager 支付產品經理】
+
+工作內容
+・負責支付／金流產品的規劃、設計與迭代，制定產品 Roadmap
+・與工程、風控、數據、法遵團隊協作，推動跨部門專案上線
+・追蹤支付成功率、轉換率等核心指標，提出並驗證優化方案
+
+必備條件
+・3 年以上產品經理經驗，具支付／金融科技背景尤佳
+・具數據分析能力，熟悉 SQL 或 BI 工具
+・優秀的跨部門溝通與專案管理能力
+
+加分條件
+・有電商、電子錢包或跨境支付產品經驗
+・熟悉風控、對帳或法遵合規流程`
+  },
+  {
+    bg:"後端工程師 3 年，主力從 PHP 轉 Golang，做過電商訂單與計費系統重構，處理過每秒數千筆的流量尖峰。想找更有規模的系統設計挑戰。",
+    role:"be", level:"mid", skills:["Golang","PHP","SQL/資料庫","微服務","API 設計"],
+    jd:`【Backend Engineer 後端工程師】
+
+工作內容
+・設計與開發高流量的訂單、計費與交易系統
+・優化服務效能與資料庫查詢，確保系統穩定與擴展性
+・與前端、PM 協作定義 API 規格，導入微服務架構
+
+必備條件
+・3 年以上後端開發經驗，熟悉 Go 或 PHP
+・熟悉 MySQL／PostgreSQL 與 Redis，具資料庫調校經驗
+・理解分散式系統與微服務設計
+
+加分條件
+・有金流、電商或高併發系統經驗
+・熟悉 Docker／Kubernetes 與 CI/CD`
+  },
+  {
+    bg:"前端工程師 1.5 年，主要用 React + TypeScript 開發 B2B SaaS 後台，做過元件庫與 RWD 改版。自學轉職，前職為行銷企劃。",
+    role:"fe", level:"junior", skills:["React","TypeScript","JavaScript","CSS/RWD","狀態管理"],
+    jd:`【Frontend Engineer 前端工程師】
+
+工作內容
+・開發 B2B SaaS 產品的前端介面與可複用元件
+・與設計、後端協作，實作 RWD 與互動流程
+・優化前端效能與載入速度
+
+必備條件
+・1 年以上前端開發經驗，熟悉 React 與 TypeScript
+・熟悉 HTML／CSS、RWD 與前端狀態管理
+・良好的溝通與跨團隊協作能力
+
+加分條件
+・有 Next.js 或前端測試經驗
+・具設計系統或元件庫維護經驗`
+  },
+  {
+    bg:"UI/UX 設計師 3 年，負責金融 App 的介面改版與設計系統建置，跑過多輪使用者訪談與可用性測試。想加入更重視研究的產品團隊。",
+    role:"design", level:"mid", skills:["Figma","使用者研究","Design System","Prototype","可用性測試"],
+    jd:`【UI/UX Designer 產品設計師】
+
+工作內容
+・負責產品從 0 到 1 的介面設計與使用流程規劃
+・進行使用者研究與可用性測試，將洞察轉為設計決策
+・建立與維護設計系統，與工程協作落地
+
+必備條件
+・3 年以上 UI/UX 設計經驗，熟悉 Figma
+・具使用者研究與 wireframe／prototype 能力
+・作品集能展現思考流程與設計決策
+
+加分條件
+・有金融、電商或 App 產品設計經驗
+・懂前端實作限制，能與工程順暢溝通`
+  },
+  {
+    bg:"數據分析師 5 年，電商與內容平台背景，用 SQL + Python 建過成長儀表板與 A/B 測試框架，跨部門推動數據驅動決策。想往數據策略角色發展。",
+    role:"data", level:"senior", skills:["SQL","Python","A/B 測試","資料視覺化","商業分析"],
+    jd:`【Data Analyst 數據分析師】
+
+工作內容
+・以 SQL／Python 分析產品與用戶數據，產出可執行洞察
+・設計與分析 A/B 測試，驗證產品假設
+・建立成長儀表板，推動跨部門數據驅動決策
+
+必備條件
+・3 年以上數據分析經驗，精熟 SQL 與 Python
+・熟悉統計方法與 A/B 測試設計
+・能將數據轉化為清楚的商業建議
+
+加分條件
+・有電商、內容或成長團隊經驗
+・熟悉 ETL、dbt 或資料視覺化工具`
+  }
+];
+
+// ── 結構化目標職位 ──
+const ROLES={
+  pm:{name:"產品經理", skills:["需求規劃/PRD","數據分析","A/B 測試","用戶研究","Roadmap","跨部門協作","敏捷 Scrum","SQL","競品分析"]},
+  fe:{name:"前端工程師", skills:["React","Vue","TypeScript","JavaScript","Next.js","CSS/RWD","狀態管理","效能優化","前端測試"]},
+  be:{name:"後端工程師", skills:["Golang","PHP","Java","Python","Node.js","SQL/資料庫","Redis","微服務","API 設計","系統設計","Docker/K8s"]},
+  design:{name:"UI/UX 設計師", skills:["Figma","使用者研究","Wireframe","Prototype","Design System","互動設計","視覺設計","可用性測試"]},
+  data:{name:"數據分析師", skills:["SQL","Python","統計分析","資料視覺化","Tableau","A/B 測試","ETL","機器學習","商業分析"]},
+  bd:{name:"商務開發 BD", skills:["業務開發","客戶關係","談判","通路/夥伴","市場拓展","KPI","提案簡報","跨國合作"]}
+};
+const LEVELS=[["intern","實習 Intern"],["junior","初階 Junior"],["mid","中階 Mid"],["senior","資深 Senior"],["lead","主管級 Lead"]];
+function levelName(v){const f=LEVELS.find(l=>l[0]===v);return f?f[1]:v;}
+function levelShort(v){const f=LEVELS.find(l=>l[0]===v);return f?f[1].split(" ")[0]:v;}
+function initSelectors(){
+  const rs=document.getElementById("role");
+  rs.innerHTML='<option value="">選擇職位…</option>'+Object.entries(ROLES).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join("");
+  const ls=document.getElementById("level");
+  ls.innerHTML=LEVELS.map(([k,n])=>`<option value="${k}">${n}</option>`).join("");
+  ls.value="mid";
+  renderSkills();
+}
+function onRoleChange(){renderSkills();syncBtn();}
+function renderSkills(){
+  const role=document.getElementById("role").value, box=document.getElementById("skills");
+  if(!role){box.innerHTML='<div class="skillhint">選好職位後，這裡會列出相關技能</div>';return;}
+  box.innerHTML=ROLES[role].skills.map(s=>`<button type="button" class="chip" data-skill="${esc(s)}" onclick="this.classList.toggle('on')">${esc(s)}</button>`).join("");
+}
+function selectedSkills(){return [...document.querySelectorAll("#skills .chip.on")].map(c=>c.dataset.skill);}
+function composeJD(role,level,skills,jdText){
+  const lines=["職位："+ROLES[role].name,"階級："+levelName(level)];
+  if(skills.length) lines.push("熟悉技能："+skills.join("、"));
+  if(jdText) lines.push("職缺描述：\n"+jdText);
+  return lines.join("\n");
+}
+let ctx={background:"",jd:""}; // 模擬回覆評分要用的背景/職位上下文
 
 // ── 分析紀錄（存在這台瀏覽器的 localStorage，不需後端） ──
 const HKEY="berry_history";
 function loadHistory(){try{return JSON.parse(localStorage.getItem(HKEY))||[]}catch(e){return[]}}
 function saveHistory(list){try{localStorage.setItem(HKEY,JSON.stringify(list))}catch(e){}}
-function pushHistory(bg,jd,data){
+function pushHistory(rec){
   const list=loadHistory();
-  list.unshift({t:Date.now(),bg,jd,data});
+  list.unshift(Object.assign({t:Date.now()},rec));
   if(list.length>50) list.length=50;
   saveHistory(list);
 }
 function openHistory(i){
   const r=loadHistory()[i]; if(!r) return;
-  document.getElementById('bg').value=r.bg||'';
-  document.getElementById('jd').value=r.jd||'';
-  grow(document.getElementById('bg')); grow(document.getElementById('jd')); syncBtn();
+  ctx={background:r.bg||'', jd:(r.role&&ROLES[r.role])?composeJD(r.role,r.level,r.skills||[],r.jd||''):(r.jd||'')};
   render(r.data); setResultState('content'); show('result');
 }
 function clearHistory(){
   if(confirm('確定清除所有分析紀錄？此動作無法復原。')){saveHistory([]);renderDash();}
 }
-// 標題統一用「目標職位」：取 JD 冒號/逗號前那段當職位名
+// 標題用「目標職位」：新紀錄用 職位·階級；舊紀錄退回抓 JD 文字
 function jobTitle(jd){
   if(!jd||!jd.trim()) return '未填目標職位';
   const first=jd.split(/[：:，。\n（(]/)[0].trim();
   return (first||jd.trim()).slice(0,24);
 }
-function titleOf(r){return (r.title&&r.title.trim())?r.title.trim():jobTitle(r.jd);}
+function titleOf(r){
+  if(r.title&&r.title.trim()) return r.title.trim();
+  if(r.role&&ROLES[r.role]) return ROLES[r.role].name+(r.level?' · '+levelShort(r.level):'');
+  return jobTitle(r.jd);
+}
 // 線條 icon（用 currentColor，跟著文字上色）
 const IC={
   edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
@@ -302,6 +492,11 @@ function reloadHistory(i,e){
   const r=loadHistory()[i]; if(!r) return;
   const bg=document.getElementById('bg'), jd=document.getElementById('jd');
   bg.value=r.bg||''; jd.value=r.jd||'';
+  if(r.role&&ROLES[r.role]){
+    document.getElementById('role').value=r.role; renderSkills();
+    (r.skills||[]).forEach(s=>{const c=document.querySelector(`#skills .chip[data-skill="${s.replace(/"/g,'\\"')}"]`); if(c) c.classList.add('on');});
+    if(r.level) document.getElementById('level').value=r.level;
+  }
   grow(bg); grow(jd); syncBtn(); show('input'); bg.focus();
 }
 function deleteHistory(i,e){
@@ -324,7 +519,7 @@ function renderDash(){
     const d=new Date(r.t);
     const when=`${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
     const nq=((r.data&&r.data.advanced_questions)||[]).length;
-    const sc=(r.jd&&r.data&&r.data.jd_match&&r.data.jd_match.score>0)?r.data.jd_match.score:null;
+    const sc=(r.data&&r.data.jd_match&&r.data.jd_match.score>0)?r.data.jd_match.score:null;
     return `<div class="hrow">
       <div class="hmain" onclick="openHistory(${i})">
         <div class="ht">${esc(titleOf(r))}</div>
@@ -348,14 +543,22 @@ function show(id){
     document.getElementById(t).classList.toggle('on',s===id);
   document.querySelector('.scroll').scrollTop=0;
 }
+let lastSample=-1;
 function fillSample(){
+  let i; do{ i=Math.floor(Math.random()*SAMPLES.length); }while(SAMPLES.length>1 && i===lastSample);
+  lastSample=i;
+  const s=SAMPLES[i];
   const bg=document.getElementById('bg'), jd=document.getElementById('jd');
-  bg.value=SAMPLE_BG; jd.value=SAMPLE_JD; grow(bg); grow(jd); syncBtn(); bg.focus();
+  bg.value=s.bg; jd.value=s.jd;
+  document.getElementById('role').value=s.role; renderSkills();
+  (s.skills||[]).forEach(sk=>{const c=document.querySelector(`#skills .chip[data-skill="${sk}"]`); if(c) c.classList.add('on');});
+  document.getElementById('level').value=s.level;
+  grow(bg); grow(jd); syncBtn(); bg.focus();
 }
 
-// 輸入框自動長高 + 依有無背景切換按鈕
+// 輸入框自動長高 + 依有無背景與職位切換按鈕
 function grow(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
-function syncBtn(){document.getElementById('go').disabled=!document.getElementById('bg').value.trim();}
+function syncBtn(){document.getElementById('go').disabled=!(document.getElementById('bg').value.trim()&&document.getElementById('role').value);}
 
 // 結果頁三種狀態：empty / loading / content
 let hasResult=false;
@@ -397,10 +600,15 @@ function prepareStreaming(){
 }
 
 async function generate(){
-  const bg=document.getElementById('bg').value.trim(), jd=document.getElementById('jd').value.trim();
+  const bg=document.getElementById('bg').value.trim();
+  const role=document.getElementById('role').value, level=document.getElementById('level').value;
+  const skills=selectedSkills(), jdText=document.getElementById('jd').value.trim();
   const err=document.getElementById('err');
   err.classList.add('hide');
   if(!bg){err.textContent='請至少填寫你的背景。';err.classList.remove('hide');return;}
+  if(!role){err.textContent='請選擇目標職位。';err.classList.remove('hide');return;}
+  const jd=composeJD(role,level,skills,jdText);
+  ctx={background:bg, jd};
   // 立刻回饋：切到結果頁、放上「分析中」動畫
   setResultState('loading'); show('result'); startSteps();
   try{
@@ -429,7 +637,7 @@ async function generate(){
       }
     }
     if(!finalData) throw new Error('連線中斷，請再試一次。');
-    pushHistory(bg,jd,finalData); render(finalData); renderDash();
+    pushHistory({bg,role,level,skills,jd:jdText,data:finalData}); render(finalData); renderDash();
     hasResult=true; setResultState('content');
   }catch(e){
     err.textContent=e.message; err.classList.remove('hide');
@@ -441,17 +649,54 @@ function makeQrow(it,i){
   const el=document.createElement('div'); el.className='qrow qin';
   el.innerHTML=`<div class="idx ${it.experience_probe?'star':''}">${i+1}</div>
     <div class="qtext">${esc(it.question)}${it.experience_probe?'<span class="tag">經歷</span>':''}
-    <div class="qwhy">${esc(it.rationale||'')}</div></div>`;
+    <div class="qwhy">${esc(it.rationale||'')}</div>
+    <button class="pbtn" onclick="togglePractice(this)">${IC.edit}模擬回覆</button>
+    <div class="practice hide">
+      <textarea class="pans" placeholder="輸入你想怎麼回答這題⋯"></textarea>
+      <button class="pgo" onclick="scoreAnswer(this)">送出評分</button>
+      <div class="pfb"></div>
+    </div></div>`;
+  el.dataset.q=it.question||'';
   return el;
+}
+function togglePractice(btn){
+  const p=btn.parentNode.querySelector('.practice');
+  const opening=p.classList.contains('hide');
+  p.classList.toggle('hide');
+  if(opening) p.querySelector('.pans').focus();
+}
+async function scoreAnswer(btn){
+  const panel=btn.closest('.practice'), qrow=btn.closest('.qrow');
+  const question=qrow.dataset.q||'', answer=panel.querySelector('.pans').value.trim();
+  const fb=panel.querySelector('.pfb');
+  if(!answer){ fb.innerHTML='<div class="perr">請先輸入你的回答。</div>'; return; }
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>評分中⋯'; fb.innerHTML='';
+  try{
+    const r=await fetch('/api/evaluate',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({background:ctx.background,jd:ctx.jd,question,answer})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'評分失敗');
+    renderFeedback(fb,d);
+  }catch(e){ fb.innerHTML=`<div class="perr">${esc(e.message)}</div>`; }
+  finally{ btn.disabled=false; btn.textContent='重新評分'; }
+}
+function renderFeedback(fb,d){
+  const s=Math.max(0,Math.min(100,d.score||0));
+  const col=s>=80?'var(--green)':s>=60?'var(--blue)':'var(--orange)';
+  const li=arr=>(arr||[]).map(t=>`<li>${esc(t)}</li>`).join('');
+  const str=li(d.strengths), imp=li(d.improvements);
+  fb.innerHTML=`<div class="pscore" style="color:${col}">${s}<small>分</small></div>
+    <div class="pcomment">${esc(d.comment||'')}</div>
+    ${str?`<div class="psec good">做得好</div><ul class="plist">${str}</ul>`:''}
+    ${imp?`<div class="psec bad">可以更好</div><ul class="plist">${imp}</ul>`:''}`;
 }
 function renderMatch(data){
   const mb=document.getElementById('matchbox'); mb.innerHTML='';
-  const jd=document.getElementById('jd').value.trim();
   const m=data.jd_match;
-  if(jd && m && typeof m.score==='number' && m.score>0){
+  if(m && typeof m.score==='number' && m.score>0){
     const s=Math.max(0,Math.min(100,m.score));
     const col=s>=80?'var(--green)':s>=60?'var(--blue)':'var(--orange)';
-    mb.innerHTML=`<div class="sechead">與這個 JD 的適配 · 觀察值</div>
+    mb.innerHTML=`<div class="sechead">與目標職位的適配 · 觀察值</div>
       <div class="match">
         <div class="mscore" style="color:${col}">${s}<small>分</small></div>
         <div class="mbar"><span style="width:${s}%;background:${col}"></span></div>
@@ -484,6 +729,7 @@ for(const id of ['bg','jd']){
     if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){e.preventDefault();generate();}
   });
 }
+initSelectors();
 syncBtn();
 setResultState('empty');
 renderDash(); // 頁面載入時就把先前存的紀錄畫出來
