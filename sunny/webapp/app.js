@@ -204,7 +204,9 @@ function computeStats() {
   const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
   const helpfulRate = triedCount > 0 ? Math.round((usefulCount / triedCount) * 100) : null;
   const answeredCount = state.heuristicResults.filter((pr) => (pr.answer || "").trim()).length;
-  return { triedCount, usefulCount, helpfulRate, completeness, topRole: sorted[0], apps: state.applications.length, versions: state.resumeVersions.length, qCount: state.heuristicResults.length, answeredCount };
+  const appMatchScores = state.applications.filter((a) => a.jd).map((a) => computeMatchScore(state.resume, a.jd).score);
+  const avgMatch = appMatchScores.length ? Math.round(appMatchScores.reduce((a, b) => a + b, 0) / appMatchScores.length) : null;
+  return { triedCount, usefulCount, helpfulRate, completeness, topRole: sorted[0], apps: state.applications.length, versions: state.resumeVersions.length, qCount: state.heuristicResults.length, answeredCount, avgMatch };
 }
 
 function renderHome() {
@@ -231,6 +233,7 @@ function renderHome() {
         <div class="stat"><div class="ic">🗣️</div><div class="n">${s.answeredCount}</div><div class="l">已回答（候選人資訊）</div></div>
         <div class="stat"><div class="ic">✅</div><div class="n">${s.triedCount}</div><div class="l">已完成的準備建議</div></div>
         <div class="stat"><div class="ic">📈</div><div class="n">${s.helpfulRate === null ? "—" : s.helpfulRate + "%"}</div><div class="l">建議有幫助比率</div></div>
+        <div class="stat"><div class="ic">🎯</div><div class="n">${s.avgMatch === null ? "—" : s.avgMatch + "%"}</div><div class="l">投遞平均匹配度</div></div>
       </div>
       <div class="mock-note" style="margin-top:-6px">「有幫助比率」＝已完成的建議裡，你自己勾選「有幫助」的比例——這是實際使用後才會累積的數字，不是預先估好的。目前 ${s.triedCount} 條已完成、${s.usefulCount} 條標記有幫助。</div>
 
@@ -340,17 +343,21 @@ function renderQuestions() {
 function renderApps() {
   const s = computeStats();
   const rvOptions = state.resumeVersions.map((r) => `<option value="${r.label}">${r.label}</option>`).join("") || "<option>v1</option>";
-  const rows = state.applications.map((a) => `
+  const rows = state.applications.map((a) => {
+    const m = a.jd ? computeMatchScore(state.resume, a.jd) : null;
+    return `
     <div class="approw" style="flex-direction:column;align-items:stretch;gap:8px">
       <div class="row between">
         <span class="co"><span class="status-dot ${statusDotClass(a.status)}"></span>${a.company} · ${a.position}</span>
         <button class="iconbtn" data-delapp="${a.id}">🗑️</button>
       </div>
       <div class="row between">
-        <span class="st">${a.resumeVersion} · ${a.status}${a.jd ? " · 已附 JD" : " · 未附 JD"}</span>
-        ${a.jd ? `<button class="btn small subtle" data-useappjd="${a.id}">💬 用這份 JD 分析</button>` : ""}
+        <span class="st">${a.resumeVersion} · ${a.status}</span>
+        ${m ? `<span class="chip ${m.score >= 60 ? "chip-real" : m.score >= 30 ? "chip-live" : "chip-mock"}">匹配 ${m.score}%</span>` : `<span class="chip chip-mock">未附 JD</span>`}
       </div>
-    </div>`).join("");
+      ${a.jd ? `<button class="btn small subtle" data-useappjd="${a.id}">💬 用這份 JD 分析</button>` : ""}
+    </div>`;
+  }).join("");
 
   return `
     <div class="view">
