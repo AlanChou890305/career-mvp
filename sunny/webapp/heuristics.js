@@ -6,7 +6,9 @@
 // 抓到的東西比較粗，是這個取捨的代價，頁面上會清楚標示「本機規則版」。
 
 const ROLE_VERBs = ["帶領", "主導", "負責", "決定", "管理", "規劃", "統籌", "帶過", "推動"];
-const NUMBER_RE = /[\d一二三四五六七八九十]+[\d,.]*\s*(%|％|人|份|個|年|萬|億|K|k|倍|次)/g;
+// 注意：不能加 g 旗標——帶 g 的正規表達式在重複呼叫 .test() 時會記住上次比對到的
+// lastIndex，同一個 regex 物件被連續拿去測不同字串時，結果會因呼叫順序而跑掉。
+const NUMBER_RE = /[\d一二三四五六七八九十]+[\d,.]*\s*(%|％|人|份|個|年|萬|億|K|k|倍|次|篇|件|支|場|案|元|天|週|月|家|筆)/;
 
 function splitSentences(text) {
   return text
@@ -98,4 +100,49 @@ function runHeuristics(background, jd) {
   }
 
   return out;
+}
+
+// 初步匹配度——JD 關鍵字裡有多少比例在背景裡也出現過。
+// 只是關鍵字重疊比對，不是語意理解，數字用來當「粗略參考」，不是正式適配度判斷
+// （docs/glossary.md 已經把「適配度判斷」定義為觀察值，不是驗證指標，這裡延續同一個立場）。
+// 把「需具備」「熟悉」這類動詞前綴、「能力」「經驗」這類名詞後綴拿掉，
+// 只留核心詞去比對——不然「需具備社群經營」永遠比不到履歷裡的「社群經營」。
+function coreTerm(k) {
+  return k
+    .replace(/^(需具備|需要|熟悉|了解|具備|擁有|精通|懂)/, "")
+    .replace(/(能力|經驗|技能)$/, "")
+    .trim() || k;
+}
+
+// 針對使用者「回答」進階問題的內容，給一句具體建議——這是「進階問題」真正的用途：
+// 不只是預測面試官會問什麼，而是藉著回答收集更多候選人資訊，回頭讓建議更具體。
+function generateAnswerTip(answer) {
+  const a = (answer || "").trim();
+  if (!a) return null;
+  if (a.length < 20) {
+    return "回答目前偏簡短，面試官通常會繼續往下追問——先想清楚具體的情境、你的角色與最後結果。";
+  }
+  if (NUMBER_RE.test(a)) {
+    return "這個回答裡有具體數字，可以直接整理進履歷的量化成果，或投遞紀錄的準備筆記裡。";
+  }
+  if (ROLE_VERBs.some((v) => a.includes(v))) {
+    return "這個回答有具體的角色與行動，是很好的履歷素材——可以濃縮成一句話加進履歷的經歷描述。";
+  }
+  return "這是可用的素材，建議整理成履歷或自我介紹裡的一段具體故事，而不是只放在這裡。";
+}
+
+function computeMatchScore(background, jd) {
+  const bg = (background || "").trim();
+  const jdText = (jd || "").trim();
+  if (!bg || !jdText) return null;
+
+  const jdKeywords = splitJdKeywords(jdText).filter((k) => k.length >= 2);
+  if (jdKeywords.length === 0) return null;
+
+  const isMatch = (k) => bg.includes(k) || bg.includes(coreTerm(k));
+  const matched = jdKeywords.filter(isMatch);
+  const missing = jdKeywords.filter((k) => !isMatch(k));
+  const score = Math.round((matched.length / jdKeywords.length) * 100);
+
+  return { score, matched, missing, total: jdKeywords.length };
 }

@@ -35,6 +35,7 @@ function defaultState() {
     resume: "",
     jd: "",
     heuristicResults: [],
+    matchScore: null,
     applications: [],
     resumeVersions: [],
     recAdoption: {},
@@ -201,7 +202,9 @@ function computeStats() {
   const freq = {};
   state.applications.forEach((a) => { freq[a.position] = (freq[a.position] || 0) + 1; });
   const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
-  return { triedCount, usefulCount, completeness, topRole: sorted[0], apps: state.applications.length, versions: state.resumeVersions.length, qCount: state.heuristicResults.length };
+  const helpfulRate = triedCount > 0 ? Math.round((usefulCount / triedCount) * 100) : null;
+  const answeredCount = state.heuristicResults.filter((pr) => (pr.answer || "").trim()).length;
+  return { triedCount, usefulCount, helpfulRate, completeness, topRole: sorted[0], apps: state.applications.length, versions: state.resumeVersions.length, qCount: state.heuristicResults.length, answeredCount };
 }
 
 function renderHome() {
@@ -225,8 +228,11 @@ function renderHome() {
         <div class="stat"><div class="ic">📮</div><div class="n">${s.apps}</div><div class="l">投遞紀錄</div></div>
         <div class="stat"><div class="ic">🗂️</div><div class="n">${s.versions}</div><div class="l">履歷版本</div></div>
         <div class="stat"><div class="ic">💬</div><div class="n">${s.qCount}</div><div class="l">已產生進階問題</div></div>
+        <div class="stat"><div class="ic">🗣️</div><div class="n">${s.answeredCount}</div><div class="l">已回答（候選人資訊）</div></div>
         <div class="stat"><div class="ic">✅</div><div class="n">${s.triedCount}</div><div class="l">已完成的準備建議</div></div>
+        <div class="stat"><div class="ic">📈</div><div class="n">${s.helpfulRate === null ? "—" : s.helpfulRate + "%"}</div><div class="l">建議有幫助比率</div></div>
       </div>
+      <div class="mock-note" style="margin-top:-6px">「有幫助比率」＝已完成的建議裡，你自己勾選「有幫助」的比例——這是實際使用後才會累積的數字，不是預先估好的。目前 ${s.triedCount} 條已完成、${s.usefulCount} 條標記有幫助。</div>
 
       <div class="card">
         <h3>⚡ 快速前往</h3>
@@ -276,14 +282,19 @@ function renderResume() {
 }
 
 function renderQuestions() {
+  const answeredCount = state.heuristicResults.filter((pr) => (pr.answer || "").trim()).length;
   const cards = state.heuristicResults.map((pr) => {
     const st = state.recAdoption[pr.id] || {};
+    const tip = pr.answer ? generateAnswerTip(pr.answer) : null;
     return `
     <div class="pred">
       <span class="cat">${pr.category}</span>
       <div class="q">${pr.question}</div>
       <div class="sp">依據：「${pr.source_phrase}」</div>
       <div class="pn">${pr.prep_note}</div>
+      <textarea class="answer-input" data-answerfor="${pr.id}" placeholder="試著實際回答這一題——你的回答會變成候選人資訊，回頭讓 dashboard 跟建議更具體" style="margin-top:8px;min-height:56px">${pr.answer || ""}</textarea>
+      <button class="btn subtle small" data-saveanswer="${pr.id}" style="margin-top:6px">💾 存這則回答，看具體建議</button>
+      ${tip ? `<div class="pn" style="margin-top:8px;background:var(--teal-bg);border-color:var(--teal-line)">${tip}</div>` : ""}
       <div class="rec-row" style="border:0;padding-top:8px">
         <label><input type="checkbox" data-reckey="${pr.id}" data-field="tried" ${st.tried ? "checked" : ""}> 已準備</label>
         <label><input type="checkbox" data-reckey="${pr.id}" data-field="useful" ${st.useful ? "checked" : ""}> 有幫助</label>
@@ -291,17 +302,36 @@ function renderQuestions() {
     </div>`;
   }).join("");
 
+  const m = state.matchScore;
+  const matchCard = m
+    ? `<div class="card">
+        <h3>🎯 初步匹配度</h3>
+        <div class="row between">
+          <div class="ring" style="--pct:${m.score};width:64px;height:64px"><div class="hole" style="width:48px;height:48px;font-size:13px">${m.score}<small>%</small></div></div>
+          <div class="sub" style="flex:1;margin:0 0 0 12px">JD 提到的 ${m.total} 個關鍵字裡，履歷有出現 ${m.matched.length} 個。</div>
+        </div>
+        ${m.missing.length ? `<div class="mini" style="margin-top:8px">履歷裡沒出現的：${m.missing.slice(0, 6).map((k) => `<span class="chip chip-mock" style="margin:2px 3px 0 0">${k}</span>`).join("")}</div>` : ""}
+        <div class="mock-note" style="margin-top:10px">這是關鍵字重疊比對，不是語意理解——初步參考用，不是正式的適配度判斷。</div>
+      </div>`
+    : "";
+
   return `
     <div class="view">
       <div class="h1">進階問題</div>
-      <p class="sub">JD 欄位可以自己改，按按鈕會分析「履歷」分頁目前的內容，猜面試官最可能追問的問題。</p>
+      <p class="sub">JD 欄位可以自己改，按按鈕會分析「履歷」分頁目前的內容，猜面試官最可能追問的問題，同時算一次初步匹配度。</p>
       <div class="card">
         <h3>應徵職位 / JD</h3>
         <textarea id="jdInput">${state.jd}</textarea>
         <button class="btn block" id="genBtn" style="margin-top:10px">✨ 產生進階問題</button>
       </div>
+      ${matchCard}
       ${state.heuristicResults.length
-        ? `<div class="card"><h3>🧩 AI 幫你想到的追問（${state.heuristicResults.length} 題）</h3>${cards}</div>`
+        ? `<div class="card">
+            <h3>🧩 AI 幫你想到的追問（${state.heuristicResults.length} 題，已回答 ${answeredCount} 題）</h3>
+            <p class="sub">這一步的重點不是背答案，是實際回答——回答會變成候選人資訊，讓下面的匹配度、履歷建議都更具體。</p>
+            ${cards}
+            ${answeredCount > 0 ? `<button class="btn block" id="mergeAnswersBtn" style="margin-top:6px">📥 把 ${answeredCount} 則回答併入履歷背景</button>` : ""}
+          </div>`
         : `<div class="mock-note">還沒產生——按上面的按鈕分析目前的履歷跟 JD。</div>`}
     </div>
   `;
@@ -496,6 +526,7 @@ function wireTab() {
     document.getElementById("genBtn").addEventListener("click", () => {
       const raw = runHeuristics(state.resume, state.jd);
       state.heuristicResults = raw.map((r, i) => Object.assign({ id: "q-" + Date.now() + "-" + i }, r));
+      state.matchScore = computeMatchScore(state.resume, state.jd);
       saveState();
       toast(state.heuristicResults.length ? `✨ 產生了 ${state.heuristicResults.length} 題` : "內容太短，先多寫一點背景或 JD");
       render();
@@ -508,6 +539,32 @@ function wireTab() {
         state.recAdoption[key][field] = cb.checked;
         saveState();
       });
+    });
+
+    screen.querySelectorAll("textarea[data-answerfor]").forEach((ta) => {
+      ta.addEventListener("input", () => {
+        const pr = state.heuristicResults.find((r) => r.id === ta.dataset.answerfor);
+        if (pr) { pr.answer = ta.value; saveState(); }
+      });
+    });
+    screen.querySelectorAll("[data-saveanswer]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const pr = state.heuristicResults.find((r) => r.id === btn.dataset.saveanswer);
+        if (!pr) return;
+        saveState();
+        toast((pr.answer || "").trim() ? "✅ 已記錄這則回答" : "還沒寫回答");
+        render();
+      });
+    });
+    const mergeBtn = document.getElementById("mergeAnswersBtn");
+    if (mergeBtn) mergeBtn.addEventListener("click", () => {
+      const answers = state.heuristicResults.filter((pr) => (pr.answer || "").trim());
+      if (!answers.length) return;
+      const block = answers.map((pr) => pr.answer.trim()).join("；");
+      state.resume = state.resume.trim() + (state.resume.trim() ? "\n" : "") + "（補充回答）" + block;
+      saveState();
+      toast("📥 已併入履歷背景，可以去「履歷」分頁看，或再產生一次進階問題／匹配度");
+      render();
     });
   }
 
