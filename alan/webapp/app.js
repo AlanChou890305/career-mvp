@@ -15,6 +15,7 @@ const TABS = [
   { id: "resume", label: "履歷" },
   { id: "job", label: "職缺" },
   { id: "apps", label: "投遞" },
+  { id: "settings", label: "設定" },
 ];
 
 const BASIC_OPTIONS = {
@@ -46,13 +47,23 @@ const BASIC_OPTIONS = {
   ],
 };
 
+// Framework7 Icons（MIT）· SF Symbols 風格。ICONS 是填充變體（選中態），
+// ICONS_OFF 是線性變體（未選中態），tabbar 依狀態取用。
+const f7 = (n) => `<i class="f7-icons">${n}</i>`;
 const ICONS = {
-  home: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="3.2"/></svg>',
-  resume: '<svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>',
-  job: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/></svg>',
-  apps: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V5M16 20v-7M22 20H2"/></svg>',
-  after: '<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg>',
-  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 8.9 19a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 5 8.9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  home: f7("house_fill"),
+  resume: f7("doc_text_fill"),
+  job: f7("briefcase_fill"),
+  apps: f7("chart_bar_fill"),
+  after: f7("arrow_counterclockwise"),
+  settings: f7("gear_alt_fill"),
+};
+const ICONS_OFF = {
+  home: f7("house"),
+  settings: f7("gear_alt"),
+  resume: f7("doc_text"),
+  job: f7("briefcase"),
+  apps: f7("chart_bar"),
 };
 
 const OB_STEPS = ["積極程度", "職涯目標", "技能", "職稱", "產業"];
@@ -172,7 +183,7 @@ function renderOnboardingBasics() {
       `<div>${BASIC_OPTIONS.openness.map(o => `
         <button class="tcard ${b.openness === o.v ? "tgt" : ""}" data-obkey="openness" data-obval="${o.v}" data-multi="0"
           style="width:100%;text-align:left;cursor:pointer;font-family:inherit;display:block">
-          <div class="th" style="margin:0 0 3px;font-size:14.5px;color:${b.openness === o.v ? "var(--teal-d)" : "var(--ink)"}">
+          <div class="th" style="margin:0 0 3px;font-size:var(--fs-body);color:${b.openness === o.v ? "var(--teal-d)" : "var(--ink)"}">
             ${b.openness === o.v ? "◉" : "○"} ${o.v}</div>
           <div class="sub" style="margin:0 0 0 20px">${o.d}</div>
         </button>`).join("")}</div>`);
@@ -342,16 +353,17 @@ function renderHome() {
 
   return `
     <div class="view">
+      <div class="maskchip"><span class="chip ${state.demoMask ? "chip-live" : "chip-mock"}">${state.demoMask ? "● 示範模式 · 個資與公司名已遮蔽" : "○ 顯示真實資訊"}</span></div>
       <div class="card hero">
         <div class="row between">
           <div>
-            <div class="sub" style="opacity:.85;margin:0">目前狀態</div>
-            <div class="h1" style="color:#fff;margin:3px 0 0">${b.openness || "—"}</div>
-            <div class="sub" style="opacity:.9;margin:4px 0 0">${b.curTitle || "—"} → <b>${b.tgtTitle || "—"}</b></div>
+            <div class="sub" style="margin:0">目前狀態</div>
+            <div class="h1" style="margin:2px 0 0">${b.openness || "—"}</div>
+            <div class="sub" style="margin:4px 0 0">${b.curTitle || "—"} → <b>${b.tgtTitle || "—"}</b></div>
           </div>
           <div class="ring" style="--pct:${pct}"><div class="hole">${pct}<small>%</small></div></div>
         </div>
-        <div class="sub" style="margin:10px 0 0;opacity:.85">進階模組解鎖進度：${3-need.length}/3</div>
+        <div class="sub" style="margin:12px 0 0">進階模組解鎖進度：${3-need.length}/3</div>
       </div>
 
       <div class="card">
@@ -496,11 +508,10 @@ function renderResume() {
           <input type="file" id="resFile" accept=".pdf,.txt,.md" hidden>
           <div class="ui2">📎</div>
           <div class="ut">上傳 PDF 履歷</div>
-          <div class="us">或直接貼上文字　·　<span class="demoflag">Demo：不做真的解析</span></div>
+          <div class="us">或直接貼上文字</div>
         </div>
-        <div class="ordiv"><span>或貼上文字</span></div>
-        <input class="full" id="resLabel" placeholder="版本名稱（例：v2 強調整合經驗）" value="${state.draftLabel || ""}">
-        <textarea id="resText" placeholder="貼上履歷全文…">${state.draftText || ""}</textarea>
+        <input class="field" id="resLabel" placeholder="版本名稱（例：主力版、產品經理版）" value="${state.draftLabel || ""}">
+        <textarea class="field" id="resText" placeholder="貼上履歷全文，或先上傳 PDF">${state.draftText || ""}</textarea>
         <button class="btn block" id="addResBtn" style="margin-top:10px">＋ 新增履歷</button>
         <button class="linklike" id="useMyResume" type="button">帶入 Alan 的履歷 →</button>
       </div>`}
@@ -640,7 +651,6 @@ function renderSettings() {
   const n = state.applications.length, r = state.resumes.length;
   return `
     <div class="view">
-      <button class="linklike" id="backFromSettings">← 回到 App</button>
       <div class="h1">設定</div>
 
       <div class="card">
@@ -729,7 +739,7 @@ function renderAppDash() {
         const rate = prev ? Math.round(f.n / prev * 100) : 0;
         return `<div class="fn">
           <div class="fl2"><span>${f.k}</span><b>${f.n}</b></div>
-          <div class="fbar"><i style="width:${Math.round(f.n / max * 100)}%;background:${["#2f8f9e","#4fa3b4","#6a5acd","#2f9d6d"][i]}"></i></div>
+          <div class="fbar"><i style="width:${Math.round(f.n / max * 100)}%;background:${["#0E7C86","#3AA0A8","#5856D6","#34C759"][i]}"></i></div>
           ${i ? `<div class="frate">↳ 轉換 ${rate}%</div>` : ""}
         </div>`;
       }).join("")}
@@ -877,33 +887,20 @@ const RENDERERS = { home: renderHome, resume: renderResume, job: renderJob, apps
 
 function renderTabbar() {
   const bar = document.getElementById("tabbar");
-  if (!state.onboarded || ["validation","settings","after"].includes(state.tab)) { bar.style.display = "none"; return; }
+  if (!state.onboarded || ["validation","after"].includes(state.tab)) { bar.style.display = "none"; return; }
   bar.style.display = "flex";
   bar.innerHTML = "";
   TABS.forEach((t) => {
-    const node = el(`<button class="tab ${t.id === state.tab ? "on" : ""}"><span class="ic">${ICONS[t.id]}</span><span>${t.label}</span></button>`);
+    const node = el(`<button class="tab ${t.id === state.tab ? "on" : ""}"><span class="ic">${t.id === state.tab ? ICONS[t.id] : (ICONS_OFF[t.id] || ICONS[t.id])}</span><span>${t.label}</span></button>`);
     node.addEventListener("click", () => { state.tab = t.id; render(); });
     bar.appendChild(node);
   });
 }
 
 let lastViewKey = null;
-function wireGear() {
-  const b = document.getElementById("gearBtn");
-  if (!b || b.dataset.wired) return;
-  b.dataset.wired = "1";
-  b.innerHTML = ICONS.gear;
-  b.addEventListener("click", () => {
-    state.tab = state.tab === "settings" ? "home" : "settings";
-    render();
-  });
-}
 
 function render() {
   renderTabbar();
-  wireGear();
-  const pill = document.getElementById("personaPill");
-  pill.textContent = state.demoMask ? "示範模式 · 個資與公司名已遮蔽" : "顯示真實資訊";
   const screen = document.getElementById("screen");
   const viewKey = state.onboarded ? state.tab : "ob" + state.obStep;
   const changedView = viewKey !== lastViewKey;
@@ -1053,7 +1050,6 @@ function wireTab() {
   }
 
   if (state.tab === "settings") {
-    document.getElementById("backFromSettings").addEventListener("click", () => { state.tab = "home"; render(); });
     document.getElementById("gotoValidation").addEventListener("click", () => { state.tab = "validation"; render(); });
     document.getElementById("maskSw").addEventListener("click", () => {
       state.demoMask = !state.demoMask; saveState();
