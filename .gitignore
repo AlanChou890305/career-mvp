@@ -32,3 +32,4 @@ __pycache__/
 # 暫存
 *.log
 tmp/
+.gstack/
