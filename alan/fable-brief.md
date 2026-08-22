@@ -119,7 +119,11 @@ AI 事前指出的落差，面試後檢查它有沒有真的成為答不出來�
   所以發布檔裡會躺著真實手機、email、公司名，view source 就看得到。
   遮蔽必須發生在寫入 `dist` 之前，發布檔裡不能有任何原文。
 - `index.html` 現在從 jsdelivr 載 framework7-icons。Artifact 的 CSP 只放行 Google Fonts，
-  外部 host 會被擋，圖示會變空白方框。換成內嵌 SVG 或其他不依賴外部 host 的方案。
+  外部 host 會被擋，圖示會變空白方框。
+  **開發版繼續用 CDN，替換只發生在打包階段**——由打包腳本把用到的圖示
+  （`ICONS` 與 `ICONS_OFF` 那兩組，見 `app.js:53` 與 `app.js:61`）
+  改成內嵌 SVG 或內嵌 font subset，並移除那行 `<link>`。
+  不要改動 `index.html` 與 `app.js` 在開發時的載入方式。
 - `dist/` 已被根目錄 `.gitignore` 排除，不會進 repo。
 
 **不要發布 Artifact。** 產出檔案後交出一份自查清單，逐項說明哪些個資已遮蔽、
