@@ -238,8 +238,8 @@
   .hmain{flex:1;min-width:0;cursor:pointer}
   .ht{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hsub{font-size:12px;color:var(--sub2);margin-top:2px}
-  .hacts{display:flex;gap:16px;margin-top:9px}
-  .hact{display:inline-flex;align-items:center;gap:5px;background:none;border:0;padding:0;
+  .hacts{display:flex;gap:13px;margin-top:9px}
+  .hact{white-space:nowrap;display:inline-flex;align-items:center;gap:5px;background:none;border:0;padding:0;
     font-size:13px;color:var(--blue);cursor:pointer}
   .hact:active{opacity:.5}
   .hact.del{color:#ff3b30}
@@ -291,6 +291,65 @@
   .qin{animation:qin .3s ease}
   .streamnote{color:var(--blue);font-size:13px;padding:10px 4px 0;display:flex;align-items:center;gap:7px}
   .streamnote .spin{border-color:#007aff44;border-top-color:var(--blue)}
+  /* 履歷附檔 */
+  .rzrow{padding:0 16px 14px}
+  .rzfile{display:flex;align-items:center;gap:10px;background:var(--fill);border-radius:10px;padding:9px 10px}
+  .rzic{width:24px;height:24px;flex:0 0 24px;color:var(--blue)}
+  .rzmeta{min-width:0;flex:1}
+  .rzname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rzsize{font-size:11px;color:var(--sub2);margin-top:1px}
+  .rzx{border:0;background:none;color:var(--sub2);font-size:18px;line-height:1;padding:2px 4px;cursor:pointer}
+  .rzx:active{opacity:.5}
+  /* 履歷建議 */
+  .fix{background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);margin:10px 0}
+  .fix-h{display:flex;align-items:flex-start;gap:8px;margin-bottom:7px}
+  .fix-sec{font-size:13px;font-weight:600;min-width:0;line-height:1.35}
+  .pri{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;flex:0 0 auto}
+  .pri.hi{background:#ffefdd;color:#e07b00}
+  .pri.mid{background:#e4eeff;color:#0a63d6}
+  .pri.lo{background:var(--fill);color:var(--sub2)}
+  .fix-p{font-size:14px;color:var(--sub);line-height:1.5}
+  .fix-s{font-size:14px;background:var(--fill);border-radius:10px;padding:10px 12px;margin-top:9px;line-height:1.5}
+  .rw{background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);margin:10px 0}
+  .rw-l{font-size:11px;font-weight:600;color:var(--sub2);letter-spacing:.4px;margin-bottom:5px}
+  .rw-b{font-size:14px;padding:9px 11px;border-radius:9px;background:var(--fill);
+    color:var(--sub);border-left:3px solid var(--sep);line-height:1.5}
+  .rw-a{font-size:14px;padding:9px 11px;border-radius:9px;background:#e9f8f2;
+    border-left:3px solid var(--green);line-height:1.5}
+  .rw-w{font-size:12px;color:var(--sub2);margin-top:8px}
+  .miss{background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);margin:10px 0}
+  .miss-h{font-size:13px;font-weight:600;color:#e07b00;margin-bottom:8px}
+  .miss ul{margin:0;padding-left:18px}
+  .miss li{font-size:14px;color:var(--sub);margin:5px 0}
+  .rznote{font-size:12px;color:var(--sub2);text-align:center;padding:12px 8px 0;line-height:1.5}
+  /* 面試回填計分 */
+  .dbcard{background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);margin:10px 0}
+  .dbtop{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .dbrate{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .dbrate small{font-size:14px;font-weight:600;color:var(--sub2)}
+  .dblab{font-size:12px;color:var(--sub2)}
+  .dbsub{display:flex;gap:16px;margin-top:14px;padding-top:13px;border-top:1px solid var(--fill)}
+  .dbsub .s{flex:1}
+  .dbsub .sk{font-size:11px;color:var(--sub2)}
+  .dbsub .sv{font-size:17px;font-weight:700;margin-top:2px}
+  .dbtally{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+  .tal{font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px}
+  .tal.ok{background:#d7f0e9;color:#0a9d78}
+  .tal.pt{background:#ffefdd;color:#e07b00}
+  .tal.no{background:#ffe2e0;color:#d9342b}
+  .dbi{background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow);margin:8px 0;
+    border-left:3px solid var(--sep)}
+  .dbi.ok{border-left-color:var(--green)}
+  .dbi.pt{border-left-color:var(--orange)}
+  .dbi.no{border-left-color:#ff3b30}
+  .dbi-h{display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap}
+  .dbi-q{font-size:14px;font-weight:600;line-height:1.45}
+  .dbi-n{font-size:12.5px;color:var(--sub);margin-top:6px;line-height:1.5}
+  .star{font-size:11px;font-weight:600;padding:2px 7px;border-radius:99px;background:#fff2cc;color:#a86a00}
+  .lesson{background:#eef4ff;border-radius:14px;padding:14px 16px;margin:10px 0}
+  .lesson-h{font-size:12px;font-weight:700;color:#0a63d6;margin-bottom:5px}
+  .lesson-b{font-size:14px;line-height:1.55}
+  .hbadge.hit{background:#d7f0e9;color:#0a9d78}
   .hide{display:none}
 </style>
 </head>
@@ -307,6 +366,19 @@
           <div class="label-row"><label>你的背景 · 經歷</label>
             <button class="minibtn" onclick="fillBgFromProfile()">＋ 帶入我的資料</button></div>
           <textarea id="bg" placeholder="例如：電商 PM 4.5 年，傳播系非工程背景⋯⋯"></textarea>
+        </div>
+        <div class="field">
+          <div class="label-row"><label>投遞的履歷（選填）</label>
+            <button class="minibtn" id="rzbtn" onclick="document.getElementById('rzin').click()">＋ 加入履歷檔案</button></div>
+          <input type="file" id="rzin" class="hide" accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown" onchange="pickResume(this)">
+          <div class="caption" id="rzhint" style="padding:6px 0 0">附上履歷，追問會更貼近你實際寫了什麼，也會多一頁履歷調整建議。支援 PDF、txt、md。</div>
+        </div>
+        <div class="rzrow hide" id="rzbox">
+          <div class="rzfile">
+            <svg class="rzic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
+            <div class="rzmeta"><div class="rzname" id="rzname"></div><div class="rzsize" id="rzsize"></div></div>
+            <button class="rzx" onclick="clearResume()" aria-label="移除履歷">✕</button>
+          </div>
         </div>
       </div>
 
@@ -352,28 +424,53 @@
         <div class="ls" id="lstep">讀取你的背景與 JD⋯</div>
       </div>
       <div id="result-content" class="hide">
+        <!-- 分頁順序＝求職旅程：投遞（履歷）→ 準備 → 面試 -->
         <div class="steps">
-          <button class="step on" id="s1btn" onclick="showStep(1)">1 · 適配與面試題</button>
-          <button class="step" id="s2btn" onclick="showStep(2)">2 · 準備清單</button>
+          <button class="step hide" id="t-resume" onclick="showStep('resume')">履歷建議</button>
+          <button class="step" id="t-prep" onclick="showStep('prep')">事前準備</button>
+          <button class="step on" id="t-quest" onclick="showStep('quest')">面試提問</button>
         </div>
 
-        <div id="step1">
-          <div class="h1">適配分析</div>
+        <div id="p-resume" class="hide">
+          <div class="h1">履歷調整建議</div>
+          <p class="lead">依這份職缺回頭看你的履歷，該改哪裡。</p>
+          <div id="rz-loading" class="loading hide" style="padding:38px 20px">
+            <div class="lspin"></div><div class="lt">讀你的履歷中</div>
+            <div class="ls">對照這個職缺，找出最該改的地方⋯</div>
+          </div>
+          <div id="rz-err" class="err hide"></div>
+          <div id="rz-overall"></div>
+          <div class="qsec hide" id="rz-fixhead"><span class="qsec-t">該改的地方</span>
+            <span class="qsec-c">依重要性排序</span></div>
+          <div id="rz-fixes"></div>
+          <div class="qsec hide" id="rz-rwhead"><span class="qsec-t">改寫示範</span></div>
+          <div id="rz-rewrites"></div>
+          <div id="rz-missing"></div>
+          <div id="rznote" class="streamnote hide"><span class="spin"></span>AI 持續生成中⋯</div>
+          <div id="rz-foot"></div>
+          <button class="btn hide" id="to-prep" onclick="showStep('prep')">看我該怎麼準備 →</button>
+          <button class="link" onclick="show('input')">下一筆分析</button>
+        </div>
+
+        <div id="p-prep" class="hide">
+          <div class="h1">事前準備</div>
+          <p class="lead">依落差排序，做完這幾件事，面試被追問時才答得出來。</p>
+          <div class="prog"><div class="prog-bar"><span id="progbar"></span></div><span class="prog-n" id="progn">0/0</span></div>
+          <div id="preplist"></div>
+          <div id="prepnote" class="streamnote hide"><span class="spin"></span>面試題還在生成，準備清單稍後出現⋯</div>
+          <button class="btn hide" id="to-quest" onclick="showStep('quest')">看面試官會怎麼問 →</button>
+          <button class="link hide" id="back-resume" onclick="showStep('resume')">← 回履歷建議</button>
+        </div>
+
+        <div id="p-quest">
+          <div class="h1">面試提問</div>
           <p class="lead" id="headline"></p>
           <div id="matchbox"></div>
           <div class="qsec"><span class="qsec-t">面試官可能會問</span><span class="qsec-c" id="qcount"></span></div>
           <div id="questions"></div>
           <div id="streamnote" class="streamnote hide"><span class="spin"></span>AI 持續生成中⋯</div>
-          <button class="btn hide" id="tonext" onclick="showStep(2)">看我該怎麼準備 →</button>
+          <button class="link" onclick="showStep('prep')">← 回事前準備</button>
           <button class="link" onclick="show('input')">下一筆分析</button>
-        </div>
-
-        <div id="step2" class="hide">
-          <div class="h1">準備清單</div>
-          <p class="lead">依落差排序，做完這幾件事，就能回答上一頁的所有問題。</p>
-          <div class="prog"><div class="prog-bar"><span id="progbar"></span></div><span class="prog-n" id="progn">0/0</span></div>
-          <div id="preplist"></div>
-          <button class="link" onclick="showStep(1)">← 回面試題</button>
         </div>
       </div>
     </section>
@@ -410,7 +507,33 @@
       <div id="stats"></div>
 
       <div class="sechead">分析紀錄</div>
+      <div class="caption" style="padding:0 4px 9px">面試完回來按「回填」，寫下實際被問什麼。命中率立刻算給你看，下一次分析也會跟著變準。</div>
       <div id="history"></div>
+    </section>
+
+    <!-- ④ 面試回填：面試完回來對答案，命中率立刻算給你看 -->
+    <section id="debrief" class="pad hide">
+      <div class="h1">面試完了</div>
+      <p class="lead" id="db-lead"></p>
+      <div class="group">
+        <div class="field">
+          <label>面試官實際問了什麼</label>
+          <textarea id="db-in" style="min-height:130px" placeholder="一行一題，記得多少寫多少⋯&#10;&#10;你那個金流串接專案負責哪一段？&#10;對帳出問題時你怎麼定位？&#10;為什麼想離開現在的公司？"></textarea>
+        </div>
+      </div>
+      <div class="caption">照你記得的寫，不用完整句子。我們會逐題比對事前的預測。</div>
+      <button class="btn" id="db-go" onclick="submitDebrief()">比對預測</button>
+      <button class="link" onclick="show('dash')">回分析紀錄</button>
+      <div id="db-err" class="err hide"></div>
+      <div id="db-loading" class="loading hide" style="padding:34px 20px">
+        <div class="lspin"></div><div class="lt">逐題比對中</div>
+        <div class="ls">看我們有沒有預測到⋯</div>
+      </div>
+      <div id="db-score"></div>
+      <div class="qsec hide" id="db-listhead"><span class="qsec-t">逐題判定</span>
+        <span class="qsec-c">面試官實際問的</span></div>
+      <div id="db-items"></div>
+      <div id="db-foot"></div>
     </section>
 
   </div>
@@ -423,11 +546,420 @@
 </div>
 
 <script>
-// 5 組範例，隨機輪替（涵蓋不同職位）
-const SAMPLES=[
+// ── 範例履歷（純文字版；填入範例時直接掛成附檔，內容為虛構人物）──
+const RESUMES={
+pm_zh:{name:"林雨潔_產品經理履歷.txt",text:`林雨潔 Rain Lin
+rain.lin.pm@example.com｜0912-345-678｜台北市
+
+【自我簡介】
+5 年產品管理經驗，專注於 B2B/B2C 雙邊平台型產品，擅長需求拆解、跨部門溝通與數據驅動決策。曾主導媒合平台從 0 到 1 的功能規劃，並帶領團隊完成多項轉換率優化專案。
+
+【工作經歷】
+資深產品經理｜快媒科技股份有限公司　2023/03 – 至今
+・負責 C 端媒合平台核心功能規劃，含競價機制、付費解鎖模組
+・主導「即時通知派發」專案，優化師傅接案轉換率 18%
+・與數據團隊合作建立媒合分數模型，整合出價頻率、轉換率、地理位置等變數
+・帶領 2 名初階 PM，規劃 B 端商戶招募頁與商業合作流程
+
+產品經理｜優服務科技有限公司　2021/07 – 2023/02
+・負責到府服務類 App 的訂單流程優化與客訴系統重構
+・制定並執行使用者訪談計畫，產出 5 組核心 Persona
+・撰寫 PRD 與驗收標準，協調工程、設計、客服團隊完成迭代
+
+產品專員｜雲端好物股份有限公司　2019/09 – 2021/06
+・協助電商平台購物車與結帳流程優化，轉換率提升 12%
+・執行 A/B 測試並產出數據報告，支援決策制定
+
+【技能】
+產品工具：Figma、Notion、Jira、Miro
+數據分析：GA4、Amplitude、SQL（基礎）
+方法論：Scrum、使用者故事地圖、Design Sprint
+文件產出：PRD 撰寫、功能規格書、驗收標準制定
+
+【學歷】
+國立政治大學 企業管理學系　2015/09 – 2019/06
+
+【語言能力】
+中文（母語）、英文（中高級）`},
+
+pm_en:{name:"Rain_Lin_PM_Resume_EN.txt",text:`Rain Lin
+rain.lin.pm@example.com | +886 912-345-678 | Taipei, Taiwan
+
+SUMMARY
+Product Manager with 5 years of experience specializing in two-sided B2B/B2C marketplace products. Skilled at requirements breakdown, cross-functional collaboration, and data-driven decision making. Led a matching-platform product from 0 to 1 and delivered multiple conversion-rate optimization projects.
+
+EXPERIENCE
+Senior Product Manager, QuickMatch Technologies Inc.　Mar 2023 – Present
+- Own core feature planning for the C-end matching platform, including bidding mechanism and paid-unlock module
+- Led the "real-time notification dispatch" project, improving craftsman job-acceptance conversion by 18%
+- Partnered with the data team to build a match-score model combining bid frequency, conversion rate, and geography
+- Led 2 junior PMs on B-end merchant recruitment page and business partnership workflows
+
+Product Manager, YouServe Technology Co., Ltd.　Jul 2021 – Feb 2023
+- Owned order-flow optimization and complaint-handling system redesign for a home-service app
+- Designed and executed a user-interview program, producing 5 core personas
+- Authored PRDs and acceptance criteria, coordinating engineering, design, and customer-service teams through delivery
+
+Product Associate, CloudGoods Inc.　Sep 2019 – Jun 2021
+- Supported cart and checkout flow optimization for an e-commerce platform, lifting conversion by 12%
+- Ran A/B tests and produced data reports to support decision making
+
+SKILLS
+Product Tools: Figma, Notion, Jira, Miro
+Analytics: GA4, Amplitude, SQL (basic)
+Methodology: Scrum, User Story Mapping, Design Sprint
+Deliverables: PRD writing, functional specs, acceptance criteria
+
+EDUCATION
+B.B.A., National Chengchi University　Sep 2015 – Jun 2019
+
+LANGUAGES
+Mandarin Chinese (native), English (upper-intermediate)`},
+
+fe_zh:{name:"陳子軒_前端工程師履歷.txt",text:`陳子軒 Kevin Chen
+kevin.chen.fe@example.com｜0921-234-567｜台北市
+
+【自我簡介】
+4 年前端工程經驗，專精 React / Vue 生態系統，擅長效能優化與元件庫建置，具備良好的跨部門溝通與 UI 還原能力。
+
+【工作經歷】
+資深前端工程師｜連線科技股份有限公司　2022/06 – 至今
+・主導公司內部設計系統（Design System）建置，元件重用率提升 40%
+・優化首頁載入效能，LCP 從 3.2s 降至 1.4s
+・導入 TypeScript 全面重構舊有 JS 專案，降低線上錯誤率 25%
+・帶領 2 名前端新人，制定 Code Review 規範
+
+前端工程師｜掌上購電商股份有限公司　2020/07 – 2022/05
+・開發購物車與結帳流程頁面，支援多語系與多幣別
+・與 UI/UX 團隊協作實現高保真設計稿，還原度達 98%
+・建置元件測試框架（Jest + React Testing Library），涵蓋率提升至 75%
+
+前端工程師（實習）｜數位夥伴有限公司　2019/07 – 2020/06
+・協助開發行銷活動頁面與 A/B 測試版本
+・學習並實作 RWD 響應式設計規範
+
+【技能】
+前端框架：React、Vue.js、TypeScript、Tailwind CSS
+建置工具：Webpack、Vite、Jest
+方法論：Component-Driven Development、Design System、Agile/Scrum
+其他工具：Figma、Storybook、Chrome DevTools、Git
+
+【學歷】
+國立台灣科技大學 資訊工程學系　2016/09 – 2020/06
+
+【語言能力】
+中文（母語）、英文（中高級）`},
+
+fe_en:{name:"Kevin_Chen_Frontend_Resume_EN.txt",text:`Kevin Chen
+kevin.chen.fe@example.com | +886 921-234-567 | Taipei, Taiwan
+
+SUMMARY
+Frontend engineer with 4 years of experience across the React/Vue ecosystem. Skilled in performance optimization and component-library architecture, with strong cross-functional collaboration and pixel-accurate UI implementation.
+
+EXPERIENCE
+Senior Frontend Engineer, LinkTech Inc.　Jun 2022 – Present
+- Led the build-out of the company's internal Design System, increasing component reuse by 40%
+- Optimized homepage load performance, reducing LCP from 3.2s to 1.4s
+- Migrated the legacy JS codebase to TypeScript, cutting production error rate by 25%
+- Mentored 2 junior frontend engineers and established the team's code review guidelines
+
+Frontend Engineer, HandyShop E-commerce Co., Ltd.　Jul 2020 – May 2022
+- Built cart and checkout flow pages with multi-language and multi-currency support
+- Collaborated with the UI/UX team to achieve 98% design fidelity on high-fidelity mockups
+- Set up a component testing framework (Jest + React Testing Library), raising coverage to 75%
+
+Frontend Engineer Intern, Digital Partners Co., Ltd.　Jul 2019 – Jun 2020
+- Assisted in building marketing campaign pages and A/B test variants
+- Learned and implemented responsive web design standards
+
+SKILLS
+Frontend: React, Vue.js, TypeScript, Tailwind CSS
+Build Tools: Webpack, Vite, Jest
+Methodology: Component-Driven Development, Design Systems, Agile/Scrum
+Other Tools: Figma, Storybook, Chrome DevTools, Git
+
+EDUCATION
+B.S. Computer Science and Engineering, National Taiwan University of Science and Technology　Sep 2016 – Jun 2020
+
+LANGUAGES
+Mandarin Chinese (native), English (upper-intermediate)`},
+
+be_zh:{name:"王柏勳_後端工程師履歷.txt",text:`王柏勳 Marcus Wang
+marcus.wang.be@example.com｜0933-456-789｜新北市
+
+【自我簡介】
+6 年後端開發經驗，專精分散式系統設計與高併發架構，曾主導多項服務從單體架構遷移至微服務，具備扎實的資料庫調優與系統維運能力。
+
+【工作經歷】
+資深後端工程師｜雲端運算科技股份有限公司　2021/09 – 至今
+・主導訂單系統微服務化改造，QPS 從 800 提升至 5000
+・設計並實作分散式快取架構（Redis Cluster），降低資料庫負載 60%
+・建立 CI/CD 自動化部署流程，部署時間從 40 分鐘縮短至 8 分鐘
+・帶領 3 人後端小組，負責系統架構評審
+
+後端工程師｜金流科技股份有限公司　2019/03 – 2021/08
+・開發支付閘道整合服務，串接 5 家第三方金流
+・優化資料庫查詢效能，將平均回應時間從 800ms 降至 150ms
+・參與系統高可用架構設計，達成 99.95% SLA
+
+後端工程師｜新創應用程式有限公司　2017/07 – 2019/02
+・開發 RESTful API 服務，支援行動 App 後端需求
+・建置自動化測試套件，涵蓋率達 80%
+
+【技能】
+程式語言：Java、Spring Boot、Python、Go
+資料庫／中介軟體：MySQL、PostgreSQL、Redis、Kafka
+基礎架構：Docker、Kubernetes、AWS
+方法論：微服務架構、DDD、Scrum
+
+【學歷】
+國立中央大學 資訊工程學系　2013/09 – 2017/06
+
+【語言能力】
+中文（母語）、英文（中高級）`},
+
+be_en:{name:"Marcus_Wang_Backend_Resume_EN.txt",text:`Marcus Wang
+marcus.wang.be@example.com | +886 933-456-789 | New Taipei City, Taiwan
+
+SUMMARY
+Backend engineer with 6 years of experience in distributed systems and high-concurrency architecture. Led multiple migrations from monolithic to microservice architectures, with strong database tuning and operations expertise.
+
+EXPERIENCE
+Senior Backend Engineer, CloudCompute Technologies Inc.　Sep 2021 – Present
+- Led the microservices transformation of the order system, scaling QPS from 800 to 5,000
+- Designed and implemented a distributed caching architecture (Redis Cluster), reducing database load by 60%
+- Built a CI/CD automated deployment pipeline, cutting deployment time from 40 to 8 minutes
+- Led a 3-person backend team responsible for architecture review
+
+Backend Engineer, PayFlow Technologies Co., Ltd.　Mar 2019 – Aug 2021
+- Built payment gateway integration services connecting 5 third-party payment providers
+- Optimized database query performance, reducing average response time from 800ms to 150ms
+- Contributed to high-availability architecture design, achieving 99.95% SLA
+
+Backend Engineer, StartApp Co., Ltd.　Jul 2017 – Feb 2019
+- Developed RESTful API services powering a mobile app backend
+- Built an automated test suite reaching 80% coverage
+
+SKILLS
+Languages: Java, Spring Boot, Python, Go
+Data / Messaging: MySQL, PostgreSQL, Redis, Kafka
+Infrastructure: Docker, Kubernetes, AWS
+Methodology: Microservices, DDD, Scrum
+
+EDUCATION
+B.S. Computer Science and Engineering, National Central University　Sep 2013 – Jun 2017
+
+LANGUAGES
+Mandarin Chinese (native), English (upper-intermediate)`},
+
+design_zh:{name:"黃詩涵_UIUX設計師履歷.txt",text:`黃詩涵 Sandy Huang
+sandy.huang.ux@example.com｜0977-890-123｜台北市
+
+【自我簡介】
+5 年 UI/UX 設計經驗，專精使用者研究與互動設計，擅長將複雜流程轉化為直覺易用的介面，曾主導多項產品從 0 到 1 的體驗設計並帶動關鍵指標成長。
+
+【工作經歷】
+資深 UI/UX 設計師｜體驗優化科技股份有限公司　2021/11 – 至今
+・主導 App 全面改版設計，用戶滿意度（CSAT）提升 28%
+・建立公司 Design System，提升團隊設計效率 40%
+・執行使用者訪談與可用性測試，累積 50+ 場研究 session
+・帶領 2 名設計師，制定設計交付規範與流程
+
+UI/UX 設計師｜生活服務平台股份有限公司　2019/09 – 2021/10
+・設計訂單流程與付款頁面，結帳轉換率提升 18%
+・執行使用者旅程地圖繪製，找出 3 大體驗痛點並優化
+・與工程團隊密切協作，確保設計高保真還原
+
+視覺設計師｜創意工作室有限公司　2018/02 – 2019/08
+・負責品牌視覺與行銷素材設計
+・協助網站介面設計與切版規範制定
+
+【技能】
+設計工具：Figma、Sketch、Adobe XD、Principle
+研究方法：使用者訪談、可用性測試、旅程地圖
+方法論：Design Thinking、Design Sprint、Jobs-to-be-Done
+協作工具：Miro、Maze、Hotjar
+
+【學歷】
+國立台灣師範大學 設計學系　2014/09 – 2018/06
+
+【語言能力】
+中文（母語）、英文（中高級）`},
+
+design_en:{name:"Sandy_Huang_UIUX_Resume_EN.txt",text:`Sandy Huang
+sandy.huang.ux@example.com | +886 977-890-123 | Taipei, Taiwan
+
+SUMMARY
+UI/UX designer with 5 years of experience in user research and interaction design. Skilled at turning complex workflows into intuitive interfaces, having led multiple 0-to-1 product experience designs that drove measurable improvements in key metrics.
+
+EXPERIENCE
+Senior UI/UX Designer, Experience Optimization Technologies Inc.　Nov 2021 – Present
+- Led a full app redesign, improving customer satisfaction (CSAT) by 28%
+- Built the company's Design System, improving team design efficiency by 40%
+- Ran user interviews and usability testing across 50+ research sessions
+- Led 2 designers and established design handoff standards and processes
+
+UI/UX Designer, Lifestyle Services Platform Co., Ltd.　Sep 2019 – Oct 2021
+- Designed order flow and payment pages, improving checkout conversion by 18%
+- Mapped the user journey and identified 3 major pain points, driving subsequent optimizations
+- Worked closely with engineering to ensure high-fidelity design implementation
+
+Visual Designer, Creative Studio Co., Ltd.　Feb 2018 – Aug 2019
+- Owned brand visual identity and marketing collateral design
+- Supported website interface design and established slicing/handoff standards
+
+SKILLS
+Design Tools: Figma, Sketch, Adobe XD, Principle
+Research: User Interviews, Usability Testing, Journey Mapping
+Methodology: Design Thinking, Design Sprint, Jobs-to-be-Done
+Collaboration: Miro, Maze, Hotjar
+
+EDUCATION
+B.A. Design, National Taiwan Normal University　Sep 2014 – Jun 2018
+
+LANGUAGES
+Mandarin Chinese (native), English (upper-intermediate)`},
+
+data_zh:{name:"張書豪_數據分析師履歷.txt",text:`張書豪 Howard Chang
+howard.chang.da@example.com｜0966-789-012｜台北市
+
+【自我簡介】
+4 年數據分析經驗，專精用戶行為分析與商業智慧報表建置，擅長將複雜數據轉化為可執行的商業洞察，具備扎實的統計與 SQL 能力。
+
+【工作經歷】
+資深數據分析師｜智慧零售科技股份有限公司　2022/08 – 至今
+・建置用戶留存與流失預測模型，準確率達 85%
+・主導 A/B 測試框架導入，協助產品團隊完成 20+ 項實驗
+・建立自動化報表系統（Looker），節省團隊每月 30 小時人工作業
+・產出高管週報與季度商業分析，支援決策制定
+
+數據分析師｜互動媒體股份有限公司　2020/06 – 2022/07
+・分析用戶行為漏斗，找出關鍵流失節點並提出優化建議，轉換率提升 15%
+・使用 SQL 與 Python 處理與清理大量交易數據
+・協助行銷團隊進行使用者分群，提升行銷活動 ROI 22%
+
+初階分析師｜市場研究顧問有限公司　2019/07 – 2020/05
+・執行市場調查數據整理與統計分析
+・產出客戶委託報告與視覺化圖表
+
+【技能】
+程式與查詢語言：SQL、Python（Pandas、NumPy）、R
+視覺化工具：Tableau、Looker、Excel（進階）
+方法論：統計假設檢定、迴歸分析、群集分析、A/B Testing
+平台：BigQuery、GA4、Amplitude
+
+【學歷】
+國立台灣大學 統計學系　2015/09 – 2019/06
+
+【語言能力】
+中文（母語）、英文（中高級）`},
+
+data_en:{name:"Howard_Chang_Data_Analyst_Resume_EN.txt",text:`Howard Chang
+howard.chang.da@example.com | +886 966-789-012 | Taipei, Taiwan
+
+SUMMARY
+Data analyst with 4 years of experience in user behavior analysis and BI reporting. Skilled at turning complex data into actionable business insights, with a solid foundation in statistics and SQL.
+
+EXPERIENCE
+Senior Data Analyst, Smart Retail Technologies Inc.　Aug 2022 – Present
+- Built user retention and churn prediction models achieving 85% accuracy
+- Led adoption of an A/B testing framework, supporting the product team through 20+ experiments
+- Built an automated reporting system (Looker), saving the team 30 hours of manual work per month
+- Produced executive weekly reports and quarterly business reviews to support decision-making
+
+Data Analyst, Interactive Media Co., Ltd.　Jun 2020 – Jul 2022
+- Analyzed the user behavior funnel, identifying key drop-off points and driving a 15% conversion lift
+- Processed and cleaned large-scale transaction data using SQL and Python
+- Supported the marketing team on user segmentation, improving campaign ROI by 22%
+
+Junior Analyst, Market Research Consultants Co., Ltd.　Jul 2019 – May 2020
+- Compiled and statistically analyzed market research data
+- Produced client-facing reports and data visualizations
+
+SKILLS
+Languages: SQL, Python (Pandas, NumPy), R
+Visualization: Tableau, Looker, Excel (advanced)
+Methodology: Hypothesis Testing, Regression Analysis, Cluster Analysis, A/B Testing
+Platforms: BigQuery, GA4, Amplitude
+
+EDUCATION
+B.S. Statistics, National Taiwan University　Sep 2015 – Jun 2019
+
+LANGUAGES
+Mandarin Chinese (native), English (upper-intermediate)`},
+
+bd_zh:{name:"李佳穎_業務開發履歷.txt",text:`李佳穎 Jessica Lee
+jessica.lee.bd@example.com｜0955-678-901｜台北市
+
+【自我簡介】
+5 年 B2B 業務開發與策略合作經驗，擅長開拓新市場、建立通路夥伴關係，具備優異的談判與提案能力，曾主導多項跨國合作案並達成年度業績目標。
+
+【工作經歷】
+資深業務開發經理｜全球連結科技股份有限公司　2022/01 – 至今
+・主導東南亞市場拓展計畫，簽約 12 家通路夥伴，年營收貢獻達 3,200 萬元
+・建立合作夥伴分級管理制度，提升夥伴留存率 35%
+・帶領 2 名業務代表，達成年度業績目標 118%
+
+業務開發專員｜品牌加速器股份有限公司　2020/03 – 2021/12
+・開發並維護 B2B 客戶名單，新增合作品牌 40+ 家
+・規劃並執行異業合作方案，帶動雙方營收成長 20%
+・撰寫商業提案與合約談判，成功率達 65%
+
+業務助理｜貿易通商股份有限公司　2018/07 – 2020/02
+・協助處理國際貿易文件與客戶關係維護
+・支援業務團隊市場調查與競品分析
+
+【技能】
+核心能力：商業談判、通路開發、提案簡報、市場分析
+系統工具：Salesforce CRM、HubSpot
+方法論：顧問式銷售、Account-Based Marketing
+語言能力：中文（母語）、英文（流利）、日文（基礎）
+
+【學歷】
+國立政治大學 國際經營與貿易學系　2014/09 – 2018/06
+
+【其他】
+持有效汽車駕照，可配合國內外出差`},
+
+bd_en:{name:"Jessica_Lee_BD_Resume_EN.txt",text:`Jessica Lee
+jessica.lee.bd@example.com | +886 955-678-901 | Taipei, Taiwan
+
+SUMMARY
+Business development professional with 5 years of B2B and strategic-partnership experience. Skilled at opening new markets and building channel partnerships, with strong negotiation and proposal skills. Led multiple cross-border partnership deals and consistently exceeded annual revenue targets.
+
+EXPERIENCE
+Senior Business Development Manager, Global Link Technologies Inc.　Jan 2022 – Present
+- Led Southeast Asia market expansion, signing 12 channel partners contributing NT$32M in annual revenue
+- Built a tiered partner management system, improving partner retention by 35%
+- Led a team of 2 sales representatives, achieving 118% of annual revenue target
+
+Business Development Associate, Brand Accelerator Co., Ltd.　Mar 2020 – Dec 2021
+- Developed and maintained a B2B client pipeline, onboarding 40+ new partner brands
+- Planned and executed co-marketing partnerships, driving 20% revenue growth for both sides
+- Authored business proposals and led contract negotiations with a 65% close rate
+
+Sales Assistant, Trade Link Commerce Co., Ltd.　Jul 2018 – Feb 2020
+- Supported international trade documentation and client relationship management
+- Assisted the sales team with market research and competitive analysis
+
+SKILLS
+Core Skills: Negotiation, Channel Development, Pitch Presentations, Market Analysis
+Systems: Salesforce CRM, HubSpot
+Methodology: Consultative Selling, Account-Based Marketing
+Languages: Mandarin Chinese (native), English (fluent), Japanese (basic)
+
+EDUCATION
+B.A. International Business, National Chengchi University　Sep 2014 – Jun 2018
+
+OTHER
+Valid driver's license; available for domestic and international travel`}
+};
+// 6 個職位 × 中英各一份履歷 = 12 組範例，隨機輪替
+const SAMPLE_BASE=[
   {
-    bg:"電商 PM 經驗 4.5 年，大學傳播系（非工程背景），多益 790。曾主導過搜尋產品改版，帶跨部門把轉換率往上拉。想轉往互聯網／軟體產品經理。",
-    role:"pm", level:"senior", skills:["數據分析","A/B 測試","跨部門協作"],
+    key:"pm",
+    bg:"產品經理 5 年，一路都在做 B2B/B2C 雙邊媒合平台，從 0 到 1 帶過競價機制與付費解鎖模組。想轉往支付／金流產品，但沒有金融業經歷，SQL 也只有基礎，這是我最擔心的地方。",
+    role:"pm", level:"senior", skills:["需求規劃/PRD","數據分析","A/B 測試","用戶研究","跨部門協作","敏捷 Scrum","SQL"],
     jd:`【Payment Product Manager 支付產品經理】
 
 工作內容
@@ -445,8 +977,9 @@ const SAMPLES=[
 ・熟悉風控、對帳或法遵合規流程`
   },
   {
-    bg:"後端工程師 3 年，主力從 PHP 轉 Golang，做過電商訂單與計費系統重構，處理過每秒數千筆的流量尖峰。想找更有規模的系統設計挑戰。",
-    role:"be", level:"mid", skills:["Golang","PHP","SQL/資料庫","微服務","API 設計"],
+    key:"be",
+    bg:"後端工程師 6 年，Java 為主，做過訂單系統微服務化與支付閘道串接，目前帶 3 人小組負責架構評審。想找規模更大的分散式系統挑戰。Go 是自學的，還沒在正式專案用過。",
+    role:"be", level:"senior", skills:["Golang","Java","Python","SQL/資料庫","Redis","微服務","API 設計","系統設計","Docker/K8s"],
     jd:`【Backend Engineer 後端工程師】
 
 工作內容
@@ -464,8 +997,9 @@ const SAMPLES=[
 ・熟悉 Docker／Kubernetes 與 CI/CD`
   },
   {
-    bg:"前端工程師 1.5 年，主要用 React + TypeScript 開發 B2B SaaS 後台，做過元件庫與 RWD 改版。自學轉職，前職為行銷企劃。",
-    role:"fe", level:"junior", skills:["React","TypeScript","JavaScript","CSS/RWD","狀態管理"],
+    key:"fe",
+    bg:"前端工程師 4 年，React 與 Vue 都寫，最近兩年主力在建設計系統與做效能優化，也帶過 2 名新人。想找更重視元件庫與工程規範的團隊。沒有 Next.js 的正式專案經驗。",
+    role:"fe", level:"senior", skills:["React","Vue","TypeScript","CSS/RWD","效能優化","前端測試"],
     jd:`【Frontend Engineer 前端工程師】
 
 工作內容
@@ -483,8 +1017,9 @@ const SAMPLES=[
 ・具設計系統或元件庫維護經驗`
   },
   {
-    bg:"UI/UX 設計師 3 年，負責金融 App 的介面改版與設計系統建置，跑過多輪使用者訪談與可用性測試。想加入更重視研究的產品團隊。",
-    role:"design", level:"mid", skills:["Figma","使用者研究","Design System","Prototype","可用性測試"],
+    key:"design",
+    bg:"UI/UX 設計師 5 年，從視覺設計轉做產品設計，現在主力在使用者研究與 Design System，帶 2 名設計師。想加入更早期、能參與產品定義的團隊。作品集偏 B2C，B2B 複雜流程的案例比較少。",
+    role:"design", level:"senior", skills:["Figma","使用者研究","Prototype","Design System","互動設計","可用性測試"],
     jd:`【UI/UX Designer 產品設計師】
 
 工作內容
@@ -502,8 +1037,9 @@ const SAMPLES=[
 ・懂前端實作限制，能與工程順暢溝通`
   },
   {
-    bg:"數據分析師 5 年，電商與內容平台背景，用 SQL + Python 建過成長儀表板與 A/B 測試框架，跨部門推動數據驅動決策。想往數據策略角色發展。",
-    role:"data", level:"senior", skills:["SQL","Python","A/B 測試","資料視覺化","商業分析"],
+    key:"data",
+    bg:"數據分析師 4 年，零售與媒體平台背景，建過留存與流失預測模型，也主導導入 A/B 測試框架。想往數據策略、能直接影響產品決策的角色走。機器學習只做到預測模型，沒碰過線上推薦系統。",
+    role:"data", level:"senior", skills:["SQL","Python","統計分析","資料視覺化","Tableau","A/B 測試","機器學習","商業分析"],
     jd:`【Data Analyst 數據分析師】
 
 工作內容
@@ -519,8 +1055,33 @@ const SAMPLES=[
 加分條件
 ・有電商、內容或成長團隊經驗
 ・熟悉 ETL、dbt 或資料視覺化工具`
+  },
+  {
+    key:"bd",
+    bg:"業務開發 5 年，B2B 通路與策略合作為主，做過東南亞市場拓展與夥伴分級制度，帶 2 名業務代表。想找 SaaS 或科技業的 BD 角色。過去賣的是實體通路方案，軟體訂閱制的銷售循環還不熟。",
+    role:"bd", level:"senior", skills:["業務開發","談判","通路/夥伴","市場拓展","提案簡報","跨國合作"],
+    jd:`【Business Development Manager 商務開發經理】
+
+工作內容
+・開拓 SaaS 產品在台灣與東南亞市場的通路與策略夥伴
+・負責從名單開發、提案簡報到合約談判的完整銷售循環
+・與產品、行銷團隊協作，設計夥伴分潤與共同行銷方案
+・追蹤 ARR 與夥伴貢獻營收，提出成長策略
+
+必備條件
+・3 年以上 B2B 業務開發或策略合作經驗
+・具備獨立提案與合約談判能力
+・英文可作為工作語言，能與跨國夥伴溝通
+
+加分條件
+・有 SaaS 訂閱制產品或軟體業銷售經驗
+・熟悉 CRM 系統（Salesforce／HubSpot）與 pipeline 管理`
   }
 ];
+// 每個職位展開成中英兩組（英文履歷也要能讀）
+const SAMPLES=SAMPLE_BASE.flatMap(s=>["zh","en"].map(lang=>
+  Object.assign({},s,{resume:RESUMES[s.key+"_"+lang]})));
+
 
 // ── 結構化目標職位 ──
 const ROLES={
@@ -555,7 +1116,52 @@ function composeJD(role,level,skills,jdText){
   if(jdText) lines.push("職缺描述：\n"+jdText);
   return lines.join("\n");
 }
-let ctx={background:"",jd:""}; // 模擬回覆評分要用的背景/職位上下文
+let ctx={background:"",jd:"",resume:null}; // 模擬回覆評分要用的背景/職位上下文
+
+// ── 履歷附檔（只留在記憶體，不進 localStorage：base64 會撐爆配額）──
+const RZ_MAX=15*1024*1024;
+let resumeFile=null; // {name, kind:'pdf'|'text', data, size}
+function pickResume(input){
+  const f=input.files&&input.files[0]; input.value=''; // 清掉才能重選同一個檔
+  if(!f) return;
+  const low=f.name.toLowerCase();
+  const isPdf=low.endsWith('.pdf')||f.type==='application/pdf';
+  const isTxt=/\.(txt|md|markdown)$/.test(low);
+  if(!isPdf&&!isTxt){ showErr('目前支援 PDF 與 .txt / .md。Word 履歷請先另存成 PDF 再上傳。'); return; }
+  if(f.size>RZ_MAX){ showErr('履歷超過 15MB，請壓縮後再試。'); return; }
+  const r=new FileReader();
+  r.onerror=()=>showErr('讀取檔案失敗，請再試一次。');
+  if(isPdf){
+    r.onload=()=>{
+      const b64=String(r.result).split(',')[1]||'';
+      if(!b64){ showErr('這個 PDF 讀不出內容，請換一個檔案。'); return; }
+      setResume({name:f.name,kind:'pdf',data:b64,size:f.size});
+    };
+    r.readAsDataURL(f);
+  }else{
+    r.onload=()=>{
+      const t=String(r.result||'').trim();
+      if(!t){ showErr('這個檔案是空的。'); return; }
+      setResume({name:f.name,kind:'text',data:t.slice(0,60000),size:f.size});
+    };
+    r.readAsText(f);
+  }
+}
+function setResume(r){ resumeFile=r; document.getElementById('err').classList.add('hide'); renderResumeChip(); }
+function clearResume(){ resumeFile=null; renderResumeChip(); }
+function renderResumeChip(){
+  const box=document.getElementById('rzbox');
+  box.classList.toggle('hide',!resumeFile);
+  document.getElementById('rzhint').classList.toggle('hide',!!resumeFile);
+  document.getElementById('rzbtn').textContent=resumeFile?'換一份':'＋ 加入履歷檔案';
+  if(resumeFile){
+    document.getElementById('rzname').textContent=resumeFile.name;
+    document.getElementById('rzsize').textContent=fmtSize(resumeFile.size)+
+      (resumeFile.kind==='pdf'?' · PDF':' · 文字檔');
+  }
+}
+function fmtSize(n){ return n<1024?n+' B':n<1048576?(n/1024).toFixed(0)+' KB':(n/1048576).toFixed(1)+' MB'; }
+function showErr(msg){ const e=document.getElementById('err'); e.textContent=msg; e.classList.remove('hide'); }
 
 // ── 個人資料（localStorage，本機） ──
 const PKEY="berry_profile";
@@ -631,9 +1237,18 @@ function renderStats(){
   trendPoints=recs.map(r=>({score:r.data.jd_match.score,title:titleOf(r)}));
   const scores=trendPoints.map(p=>p.score);
   const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):null;
+  // 回填過的面試越多，這個數字越有意義——它是真實發生過的事，不是預測
+  const dbs=list.filter(r=>r.debrief&&(r.debrief.items||[]).length).map(r=>r.debrief.items);
+  const all=dbs.flat();
+  const hitRate=all.length?Math.round(all.filter(x=>x.verdict==='命中').length/all.length*100):null;
   const tiles=`<div class="tiles">
     <div class="tile"><div class="k">已分析</div><div class="v">${count}<small> 筆</small></div></div>
     <div class="tile"><div class="k">平均適配</div><div class="v">${avg!=null?avg:'—'}<small>${avg!=null?' 分':''}</small></div></div>
+  </div>
+  <div class="tiles" style="margin-top:10px">
+    <div class="tile"><div class="k">已回填面試</div><div class="v">${dbs.length}<small> 場</small></div></div>
+    <div class="tile"><div class="k">題目命中率</div><div class="v">${hitRate!=null?hitRate:'—'}<small>${hitRate!=null?' %':''}</small></div>
+      ${all.length?`<div class="bar"><span style="width:${hitRate}%"></span></div>`:''}</div>
   </div>`;
   const chart=scores.length
     ? `<div class="trend"><div class="trend-top"><span class="trend-t">適配分數趨勢</span></div>
@@ -724,14 +1339,20 @@ function loadHistory(){try{return JSON.parse(localStorage.getItem(HKEY))||[]}cat
 function saveHistory(list){try{localStorage.setItem(HKEY,JSON.stringify(list))}catch(e){}}
 function pushHistory(rec){
   const list=loadHistory();
-  list.unshift(Object.assign({t:Date.now()},rec));
+  const r=Object.assign({t:Date.now()},rec);
+  list.unshift(r);
   if(list.length>50) list.length=50;
   saveHistory(list);
+  return r.t; // 履歷建議可能晚點才回來，靠這個時間戳找回這筆
 }
 function openHistory(i){
   const r=loadHistory()[i]; if(!r) return;
-  ctx={background:r.bg||'', jd:(r.role&&ROLES[r.role])?composeJD(r.role,r.level,r.skills||[],r.jd||''):(r.jd||'')};
+  ctx={background:r.bg||'', jd:(r.role&&ROLES[r.role])?composeJD(r.role,r.level,r.skills||[],r.jd||''):(r.jd||''), resume:null};
+  // 履歷檔案沒存進 localStorage，但當時算出來的建議有，直接還原
+  resetResume();
+  if(r.resume_advice) rzRender(r.resume_advice); else renderResume();
   render(r.data); setResultState('content'); show('result');
+  showStep(r.resume_advice?'resume':'quest');
 }
 function clearHistory(){
   if(confirm('確定清除所有分析紀錄？此動作無法復原。')){saveHistory([]);renderDash();}
@@ -754,7 +1375,8 @@ const IC={
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
   target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>',
   chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M8 16v-4"/><path d="M13 16V8"/><path d="M18 16v-6"/></svg>',
-  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v4"/></svg>'
 };
 // 就地編輯：點改名 → 標題變輸入框，Enter/失焦存檔，Esc 取消
 function renameHistory(i,e){
@@ -782,6 +1404,7 @@ function reloadHistory(i,e){
     (r.skills||[]).forEach(s=>{const c=document.querySelector(`#skills .chip[data-skill="${s.replace(/"/g,'\\"')}"]`); if(c) c.classList.add('on');});
     if(r.level) document.getElementById('level').value=r.level;
   }
+  clearResume(); // 履歷檔案沒存下來，不留上一份在這裡誤導
   grow(bg); grow(jd); syncBtn(); show('input'); bg.focus();
 }
 function deleteHistory(i,e){
@@ -805,17 +1428,22 @@ function renderDash(){
     const when=`${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
     const nq=((r.data&&r.data.advanced_questions)||[]).length;
     const sc=(r.data&&r.data.jd_match&&r.data.jd_match.score>0)?r.data.jd_match.score:null;
+    const db=r.debrief&&(r.debrief.items||[]).length?debriefRates(r.debrief.items):null;
+    // 回填過的紀錄改秀命中率——那比適配分數有價值，因為是真的發生過的事
+    const badge=db?`<span class="hbadge hit">${IC.check}命中 ${db.strict}%</span>`
+      :(sc?`<span class="hbadge">${IC.target}匹配 ${sc} 分</span>`:'');
     return `<div class="hrow">
       <div class="hmain" onclick="openHistory(${i})">
         <div class="ht">${esc(titleOf(r))}</div>
-        <div class="hsub">${when} · ${nq} 題</div>
+        <div class="hsub">${when} · ${nq} 題${db?` · 實際被問 ${db.n} 題`:''}</div>
         <div class="hacts">
+          <button class="hact" onclick="openDebrief(${i},event)">${IC.mic}${db?'已回填':'回填'}</button>
           <button class="hact" onclick="renameHistory(${i},event)">${IC.edit}改名</button>
-          <button class="hact" onclick="reloadHistory(${i},event)">${IC.redo}重測一次</button>
+          <button class="hact" onclick="reloadHistory(${i},event)">${IC.redo}重測</button>
           <button class="hact del" onclick="deleteHistory(${i},event)">${IC.trash}刪除</button>
         </div>
       </div>
-      ${sc?`<span class="hbadge">${IC.target}匹配 ${sc} 分</span>`:''}
+      ${badge}
       <span class="hchev" onclick="openHistory(${i})">›</span></div>`;
   }).join('');
   h.innerHTML=`<div class="group">${rows}</div>
@@ -823,9 +1451,10 @@ function renderDash(){
 }
 
 function show(id){
-  for(const s of ['input','result','dash']) document.getElementById(s).classList.toggle('hide',s!==id);
+  for(const s of ['input','result','dash','debrief']) document.getElementById(s).classList.toggle('hide',s!==id);
+  const nav=(id==='debrief')?'dash':id; // 回填頁掛在「我的」底下，底部維持亮著
   for(const [t,s] of [['t-input','input'],['t-result','result'],['t-dash','dash']])
-    document.getElementById(t).classList.toggle('on',s===id);
+    document.getElementById(t).classList.toggle('on',s===nav);
   document.querySelector('.scroll').scrollTop=0;
 }
 let lastSample=-1;
@@ -838,6 +1467,10 @@ function fillSample(){
   document.getElementById('role').value=s.role; renderSkills();
   (s.skills||[]).forEach(sk=>{const c=document.querySelector(`#skills .chip[data-skill="${sk}"]`); if(c) c.classList.add('on');});
   document.getElementById('level').value=s.level;
+  // 範例履歷直接掛成附檔，走跟使用者上傳一樣的路徑
+  if(s.resume) setResume({name:s.resume.name, kind:'text', data:s.resume.text,
+    size:new Blob([s.resume.text]).size});
+  else clearResume();
   grow(bg); grow(jd); syncBtn(); bg.focus();
 }
 
@@ -853,14 +1486,17 @@ function setResultState(s){
   document.getElementById('result-content').classList.toggle('hide',s!=='content');
 }
 
-// 等待時輪播四句（對應 prompt 的實際步驟，讓等待有意義）
+// 等待時輪播（對應 prompt 的實際步驟，讓等待有意義）
 const LSTEPS=["讀取你的背景與 JD⋯","推論你一定經歷過、但沒寫出來的場景⋯",
   "模擬面試官，想最尖銳的追問⋯","整理準備建議與 JD 適配分數⋯"];
+const LSTEPS_RZ=["讀你的履歷⋯","比對 JD 要求與履歷內容⋯","找出招募方掃 30 秒會漏掉的地方⋯",
+  "同時推論面試官會怎麼追問⋯"];
 let stepTimer=null;
 function startSteps(){
-  const el=document.getElementById('lstep'); let i=0; el.textContent=LSTEPS[0];
-  stepTimer=setInterval(()=>{i=(i+1)%LSTEPS.length;
-    el.style.opacity=0; setTimeout(()=>{el.textContent=LSTEPS[i];el.style.opacity=1;},250);},2600);
+  const steps=resumeFile?LSTEPS_RZ:LSTEPS;
+  const el=document.getElementById('lstep'); let i=0; el.textContent=steps[0];
+  stepTimer=setInterval(()=>{i=(i+1)%steps.length;
+    el.style.opacity=0; setTimeout(()=>{el.textContent=steps[i];el.style.opacity=1;},250);},2600);
 }
 function stopSteps(){if(stepTimer){clearInterval(stepTimer);stepTimer=null;}}
 
@@ -874,16 +1510,35 @@ function parseSSE(chunk){
   if(!data) return null;
   try{return {event:ev,data:JSON.parse(data)};}catch(e){return null;}
 }
-// 開始串流結果：清空、露出問題區、其餘先藏
+// 讀一條 SSE 串流，每個事件丟給 onEvent
+async function readSSE(url,body,onEvent){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)});
+  if(!r.ok){ const d=await r.json().catch(()=>({})); throw new Error(d.error||'產生失敗'); }
+  const reader=r.body.getReader(), dec=new TextDecoder();
+  let buf='';
+  while(true){
+    const {value,done}=await reader.read();
+    if(done) break;
+    buf+=dec.decode(value,{stream:true});
+    let i;
+    while((i=buf.indexOf('\n\n'))>=0){
+      const ev=parseSSE(buf.slice(0,i)); buf=buf.slice(i+2);
+      if(ev) onEvent(ev);
+    }
+  }
+}
+// 開始串流結果：把上一次的內容清乾淨
 function prepareStreaming(){
-  showStep(1);
   document.getElementById('headline').textContent='';
   document.getElementById('qcount').textContent='';
   document.getElementById('matchbox').innerHTML='';
   document.getElementById('questions').innerHTML='';
   document.getElementById('preplist').innerHTML='';
-  document.getElementById('tonext').classList.add('hide');
   document.getElementById('streamnote').classList.remove('hide');
+  document.getElementById('prepnote').classList.remove('hide');
+  document.getElementById('to-quest').classList.add('hide');
+  resetResume(); rzLoading=!!resumeFile; renderResume();
 }
 
 async function generate(){
@@ -895,41 +1550,75 @@ async function generate(){
   if(!bg){err.textContent='請至少填寫你的背景。';err.classList.remove('hide');return;}
   if(!role){err.textContent='請選擇目標職位。';err.classList.remove('hide');return;}
   const jd=composeJD(role,level,skills,jdText);
-  ctx={background:bg, jd};
+  const rz=resumeFile;
+  ctx={background:bg, jd, resume:rz};
+  curRecT=null; rzPending=null;
   // 立刻回饋：切到結果頁、放上「分析中」動畫
   setResultState('loading'); show('result'); startSteps();
-  try{
-    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({background:bg,jd})});
-    if(!r.ok){ const d=await r.json().catch(()=>({})); throw new Error(d.error||'產生失敗'); }
-    const reader=r.body.getReader(), dec=new TextDecoder();
-    let buf='', firstQ=true, finalData=null;
-    while(true){
-      const {value,done}=await reader.read();
-      if(done) break;
-      buf+=dec.decode(value,{stream:true});
-      let i;
-      while((i=buf.indexOf('\n\n'))>=0){
-        const ev=parseSSE(buf.slice(0,i)); buf=buf.slice(i+2);
-        if(!ev) continue;
-        if(ev.event==='question'){
-          if(firstQ){ stopSteps(); prepareStreaming(); setResultState('content'); firstQ=false; }
-          const q=document.getElementById('questions');
-          q.appendChild(makeQrow(ev.data,q.children.length));
-        }else if(ev.event==='done'){
-          finalData=ev.data;
-        }else if(ev.event==='error'){
-          throw new Error(ev.data.error||'產生失敗');
-        }
-      }
-    }
+  prepareStreaming();
+
+  // 第一個有內容的串流負責把畫面從「分析中」切成正式結果，
+  // 並停在旅程起點：有履歷就停履歷那頁，沒有就停面試題
+  let landed=false;
+  const land=()=>{ if(landed) return; landed=true;
+    stopSteps(); setResultState('content'); showStep(rz?'resume':'quest'); };
+
+  const past=pastDebriefs(); // 過去面試實際被問過什麼，拿來校準這次的預測
+  async function runQuestions(){
+    let finalData=null;
+    await readSSE('/api/generate',{background:bg,jd,resume:rz,past},ev=>{
+      if(ev.event==='question'){
+        land();
+        const q=document.getElementById('questions');
+        q.appendChild(makeQrow(ev.data,q.children.length));
+      }else if(ev.event==='done'){ finalData=ev.data; }
+      else if(ev.event==='error'){ throw new Error(ev.data.error||'產生失敗'); }
+    });
     if(!finalData) throw new Error('連線中斷，請再試一次。');
-    pushHistory({bg,role,level,skills,jd:jdText,data:finalData}); render(finalData); renderDash();
-    hasResult=true; setResultState('content');
-  }catch(e){
-    err.textContent=e.message; err.classList.remove('hide');
-    setResultState(hasResult?'content':'empty'); show('input');
-  }finally{ stopSteps(); }
+    render(finalData); land(); hasResult=true;
+    // 只存檔名，履歷檔案本身不進 localStorage（base64 會撐爆配額）
+    curRecT=pushHistory({bg,role,level,skills,jd:jdText,data:finalData,
+      resumeName:rz?rz.name:'', resume_advice:rzPending||undefined});
+    renderDash();
+  }
+
+  async function runResume(){
+    await readSSE('/api/resume',{background:bg,jd,resume:rz},ev=>{
+      if(ev.event==='overall'){ land(); rzSetOverall(ev.data); }
+      else if(ev.event==='fix'){ land(); rzAddFix(ev.data); }
+      else if(ev.event==='rewrite'){ rzAddRewrite(ev.data); }
+      else if(ev.event==='done'){ rzRender(ev.data); saveResumeAdvice(ev.data); }
+      else if(ev.event==='error'){ throw new Error(ev.data.error||'履歷分析失敗'); }
+    });
+  }
+
+  const jobs=[runQuestions().catch(e=>({who:'q',e}))];
+  if(rz) jobs.push(runResume().catch(e=>({who:'rz',e})));
+  const fails=(await Promise.all(jobs)).filter(Boolean);
+  stopSteps();
+
+  for(const f of fails){
+    if(f.who==='rz'){ rzLoading=false; rzErr=f.e.message; renderResume(); }
+  }
+  const qFail=fails.find(f=>f.who==='q');
+  if(qFail){
+    document.getElementById('streamnote').classList.add('hide');
+    document.getElementById('prepnote').classList.add('hide');
+    if(landed){ // 履歷那半邊有結果，就別把人踢回輸入頁
+      document.getElementById('qcount').textContent='面試題產生失敗：'+qFail.e.message;
+    }else{
+      err.textContent=qFail.e.message; err.classList.remove('hide');
+      resetResume(); renderResume();
+      setResultState(hasResult?'content':'empty'); show('input');
+    }
+  }
+}
+// 兩個串流誰先跑完不一定：題目那邊還沒建紀錄就先暫存，之後一起寫進去
+let rzPending=null, curRecT=null;
+function saveResumeAdvice(d){
+  if(curRecT==null){ rzPending=d; return; }
+  const list=loadHistory(), i=list.findIndex(r=>r.t===curRecT);
+  if(i>=0){ list[i].resume_advice=d; saveHistory(list); renderDash(); }
 }
 
 const TYPECLS={'必答':'must','深挖':'deep','暖身':'warm'};
@@ -1023,16 +1712,28 @@ function render(data){
   document.getElementById('qcount').textContent=qs.length?`共 ${qs.length} 題${must?' · '+must+' 題必答':''}`:'';
   renderPrep(data);
   document.getElementById('streamnote').classList.add('hide');
-  document.getElementById('tonext').classList.remove('hide');
-  showStep(1);
+  document.getElementById('prepnote').classList.add('hide');
+  document.getElementById('to-quest').classList.remove('hide');
 }
-// 步驟切換：1 適配與面試題 / 2 準備清單
-function showStep(n){
-  document.getElementById('step1').classList.toggle('hide',n!==1);
-  document.getElementById('step2').classList.toggle('hide',n!==2);
-  document.getElementById('s1btn').classList.toggle('on',n===1);
-  document.getElementById('s2btn').classList.toggle('on',n===2);
+// 分頁順序＝求職旅程：履歷（投遞）→ 事前準備 → 面試提問
+// 履歷那頁沒附履歷就不出現，所以編號是依「實際看得到幾頁」動態算的
+const STEPS=[['resume','履歷建議'],['prep','事前準備'],['quest','面試提問']];
+function showStep(key){
+  for(const [k] of STEPS){
+    document.getElementById('p-'+k).classList.toggle('hide',k!==key);
+    document.getElementById('t-'+k).classList.toggle('on',k===key);
+  }
   document.querySelector('.scroll').scrollTop=0;
+}
+function renumberSteps(){
+  const hasRz=!!(rzAdvice||rzLoading||rzErr);
+  document.getElementById('t-resume').classList.toggle('hide',!hasRz);
+  document.getElementById('back-resume').classList.toggle('hide',!hasRz);
+  let n=0;
+  for(const [k,label] of STEPS){
+    if(k==='resume'&&!hasRz) continue;
+    document.getElementById('t-'+k).textContent=`${++n} · ${label}`;
+  }
 }
 function renderPrep(data){
   const box=document.getElementById('preplist'); box.innerHTML='';
@@ -1062,6 +1763,194 @@ function updateProg(){
   document.getElementById('progn').textContent=`${done}/${total}`;
   document.getElementById('progbar').style.width=total?(done/total*100)+'%':'0%';
 }
+// ── 履歷建議（旅程第一步，串流）──
+// 送出分析時就跟面試題同時發，不等主分析，所以是使用者第一眼看到在長的東西
+let rzAdvice=null, rzLoading=false, rzErr='';
+const PRICLS={'高':'hi','中':'mid','低':'lo'};
+const $=id=>document.getElementById(id);
+
+function resetResume(){
+  rzAdvice=null; rzErr=''; rzLoading=false;
+  for(const id of ['rz-overall','rz-fixes','rz-rewrites','rz-missing','rz-foot']) $(id).innerHTML='';
+  for(const id of ['rz-fixhead','rz-rwhead','rz-err','rznote','to-prep']) $(id).classList.add('hide');
+  $('rz-loading').classList.add('hide');
+}
+// 只更新分頁列與載入／錯誤狀態；內容由下面幾個 rzAdd* 逐條疊上去
+function renderResume(){
+  renumberSteps();
+  $('rz-loading').classList.toggle('hide',!(rzLoading&&!$('rz-overall').innerHTML));
+  $('rznote').classList.toggle('hide',!rzLoading);
+  $('rz-err').classList.toggle('hide',!rzErr);
+  if(rzErr) $('rz-err').textContent=rzErr;
+}
+function rzSetOverall(o){
+  const s=Math.max(0,Math.min(100,o.score||0));
+  const col=s>=80?'var(--green)':s>=60?'var(--blue)':'var(--orange)';
+  $('rz-loading').classList.add('hide');
+  $('rz-overall').innerHTML=`<div class="match">
+    <div class="match-top">
+      <div class="match-head"><div class="match-label">這份履歷對這個職位的說服力</div>
+        <div class="match-verdict">${esc(o.verdict||'')}</div></div>
+      <div class="match-score" style="color:${col}">${s}<small>/100</small></div>
+    </div>
+    <div class="mbar"><span style="width:${s}%;background:${col}"></span></div>
+  </div>`;
+}
+function rzAddFix(f){
+  $('rz-fixhead').classList.remove('hide');
+  const el=document.createElement('div'); el.className='fix qin';
+  el.innerHTML=`<div class="fix-h"><span class="pri ${PRICLS[f.priority]||'lo'}">${esc(f.priority||'')}</span>
+      <span class="fix-sec">${esc(f.section||'')}</span></div>
+    <div class="fix-p">${esc(f.problem||'')}</div>
+    <div class="fix-s">改成：${esc(f.suggestion||'')}</div>`;
+  $('rz-fixes').appendChild(el);
+}
+function rzAddRewrite(w){
+  $('rz-rwhead').classList.remove('hide');
+  const el=document.createElement('div'); el.className='rw qin';
+  el.innerHTML=`<div class="rw-l">原本這樣寫</div><div class="rw-b">${esc(w.before||'')}</div>
+    <div class="rw-l" style="margin-top:11px">可以改成</div><div class="rw-a">${esc(w.after||'')}</div>
+    ${w.why?`<div class="rw-w">${esc(w.why)}</div>`:''}`;
+  $('rz-rewrites').appendChild(el);
+}
+// 串流結束（或讀舊紀錄）時用完整資料重畫一次，保證正確
+function rzRender(d){
+  rzAdvice=d; rzLoading=false; rzErr='';
+  $('rz-loading').classList.add('hide');
+  $('rz-fixes').innerHTML=''; $('rz-rewrites').innerHTML='';
+  rzSetOverall(d.overall||{});
+  (d.fixes||[]).forEach(rzAddFix);
+  (d.rewrites||[]).forEach(rzAddRewrite);
+  $('rz-missing').innerHTML=(d.missing||[]).length?`<div class="miss">
+    <div class="miss-h">職缺會看、但履歷沒提到</div>
+    <ul>${d.missing.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></div>`:'';
+  $('rz-foot').innerHTML='<div class="rznote">改寫只依你履歷上寫過的內容重組，'+
+    '沒寫的成果留成 __ 讓你自己補，不會替你編數字。</div>';
+  $('to-prep').classList.remove('hide');
+  renderResume();
+}
+
+// ── 面試回填：面試完回來對答案 ──
+// 命中率的算法照 scoring-sop.md：分母是「實際被問的題數」，★ 經歷題另外算
+let dbIndex=-1;
+function debriefRates(items){
+  const n=items.length;
+  const cnt=v=>items.filter(x=>x.verdict===v).length;
+  const hit=cnt('命中'), part=cnt('部分');
+  const ep=items.filter(x=>x.experience_probe);
+  const epHit=ep.filter(x=>x.verdict==='命中').length;
+  const epPart=ep.filter(x=>x.verdict==='部分').length;
+  const pct=(a,b)=>b?Math.round(a/b*100):null;
+  return {n, hit, part, miss:n-hit-part,
+    loose:pct(hit+part,n), strict:pct(hit,n),
+    epN:ep.length, epLoose:pct(epHit+epPart,ep.length), epStrict:pct(epHit,ep.length)};
+}
+function openDebrief(i,e){
+  if(e) e.stopPropagation();
+  const r=loadHistory()[i]; if(!r) return;
+  dbIndex=i;
+  const nq=((r.data&&r.data.advanced_questions)||[]).length;
+  document.getElementById('db-lead').textContent=
+    `${titleOf(r)} · 事前預測了 ${nq} 題。寫下實際被問什麼，看我們準不準。`;
+  document.getElementById('db-in').value='';
+  resetDebrief();
+  if(r.debrief) renderDebrief(r.debrief); // 已經填過就直接顯示上次結果
+  show('debrief');
+  if(!r.debrief) document.getElementById('db-in').focus();
+}
+function resetDebrief(){
+  for(const id of ['db-score','db-items','db-foot']) document.getElementById(id).innerHTML='';
+  document.getElementById('db-listhead').classList.add('hide');
+  document.getElementById('db-err').classList.add('hide');
+  document.getElementById('db-loading').classList.add('hide');
+}
+async function submitDebrief(){
+  const r=loadHistory()[dbIndex]; if(!r) return;
+  const actual=document.getElementById('db-in').value.trim();
+  const err=document.getElementById('db-err'), go=document.getElementById('db-go');
+  if(!actual){ err.textContent='請先寫下面試官問了什麼。'; err.classList.remove('hide'); return; }
+  resetDebrief();
+  document.getElementById('db-loading').classList.remove('hide');
+  go.disabled=true; go.textContent='比對中⋯';
+  const predicted=((r.data&&r.data.advanced_questions)||[]).map(q=>q.question);
+  const live=[];
+  try{
+    await readSSE('/api/debrief',{predicted,actual},ev=>{
+      if(ev.event==='item'){
+        document.getElementById('db-loading').classList.add('hide');
+        document.getElementById('db-listhead').classList.remove('hide');
+        live.push(ev.data); dbAddItem(ev.data, live.length);
+        dbSetScore(debriefRates(live), true);
+      }else if(ev.event==='done'){
+        renderDebrief(ev.data); saveDebrief(ev.data);
+      }else if(ev.event==='error'){ throw new Error(ev.data.error||'比對失敗'); }
+    });
+  }catch(e){
+    resetDebrief(); err.textContent=e.message; err.classList.remove('hide');
+  }finally{ go.disabled=false; go.textContent='重新比對'; }
+}
+function saveDebrief(d){
+  const list=loadHistory();
+  if(!list[dbIndex]) return;
+  list[dbIndex].debrief=Object.assign({t:Date.now()},d);
+  saveHistory(list); renderDash();
+}
+const VCLS={'命中':'ok','部分':'pt','沒中':'no'};
+const VICON={'命中':'✅','部分':'🔶','沒中':'❌'};
+function dbSetScore(x,streaming){
+  const col=x.strict>=70?'var(--green)':x.strict>=40?'var(--blue)':'var(--orange)';
+  document.getElementById('db-score').innerHTML=`<div class="dbcard">
+    <div class="dbtop">
+      <div><div class="dblab">嚴格命中率${streaming?'（比對中）':''}</div>
+        <div class="dbrate" style="color:${col}">${x.strict==null?'—':x.strict}<small>%</small></div></div>
+      <div style="text-align:right"><div class="dblab">實際被問</div>
+        <div class="dbrate" style="font-size:26px">${x.n}<small> 題</small></div></div>
+    </div>
+    <div class="dbtally">
+      <span class="tal ok">✅ 命中 ${x.hit}</span>
+      <span class="tal pt">🔶 部分 ${x.part}</span>
+      <span class="tal no">❌ 沒中 ${x.miss}</span>
+    </div>
+    <div class="dbsub">
+      <div class="s"><div class="sk">寬鬆命中率（含部分）</div><div class="sv">${x.loose==null?'—':x.loose+'%'}</div></div>
+      <div class="s"><div class="sk">★ 經歷題命中率</div><div class="sv">${
+        x.epN?`${x.epStrict}%<span style="font-size:12px;color:var(--sub2)"> · ${x.epN} 題</span>`:'—'}</div></div>
+    </div>
+  </div>`;
+}
+function dbAddItem(it,i){
+  const cls=VCLS[it.verdict]||'no';
+  const el=document.createElement('div'); el.className='dbi '+cls+' qin';
+  const ref=it.matched>0?`<span class="qcat">對到預測第 ${it.matched} 題</span>`:'';
+  el.innerHTML=`<div class="dbi-h"><span class="tal ${cls}">${VICON[it.verdict]||''} ${esc(it.verdict)}</span>
+      ${it.experience_probe?'<span class="star">★ 經歷題</span>':''}${ref}</div>
+    <div class="dbi-q">${i}. ${esc(it.actual)}</div>
+    ${it.note?`<div class="dbi-n">${esc(it.note)}</div>`:''}`;
+  document.getElementById('db-items').appendChild(el);
+}
+function renderDebrief(d){
+  const items=d.items||[];
+  document.getElementById('db-listhead').classList.toggle('hide',!items.length);
+  document.getElementById('db-items').innerHTML='';
+  items.forEach((it,i)=>dbAddItem(it,i+1));
+  dbSetScore(debriefRates(items),false);
+  document.getElementById('db-loading').classList.add('hide');
+  document.getElementById('db-foot').innerHTML=
+    (d.missed_summary?`<div class="miss"><div class="miss-h">我們漏掉的方向</div>
+      <ul><li>${esc(d.missed_summary)}</li></ul></div>`:'')+
+    (d.lesson?`<div class="lesson"><div class="lesson-h">下次分析會帶上這一點</div>
+      <div class="lesson-b">${esc(d.lesson)}</div></div>`:'')+
+    `<div class="rznote">這場的實際題目已經存進你的紀錄，下一次分析會拿它來校準預測方向。</div>`;
+}
+// 把過去回填過的面試整理成給 /api/generate 的線索
+function pastDebriefs(){
+  return loadHistory().filter(r=>r.debrief&&(r.debrief.items||[]).length).slice(0,5).map(r=>({
+    title:titleOf(r),
+    questions:(r.debrief.items||[]).map(x=>x.actual),
+    lesson:r.debrief.lesson||''
+  }));
+}
+
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 
 // 初始化：綁輸入行為、還原紀錄、預設空狀態
@@ -1075,6 +1964,7 @@ for(const id of ['bg','jd']){
 initSelectors();
 initProfile();
 syncBtn();
+renderResume(); // 幫分頁列標上編號（沒履歷時是 1·事前準備 2·面試提問）
 setResultState('empty');
 renderDash(); // 頁面載入時就把先前存的紀錄畫出來
 </script>
