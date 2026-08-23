@@ -462,22 +462,6 @@ function renderHome() {
         <h3 style="margin-top:14px">這些建議沒有涵蓋的</h3>
         ${ALAN.planUncovered.map(x=>`<div class="sub" style="margin-bottom:8px">${x}</div>`).join("")}
       </div>` : lockCard(LOCKS[0])}
-
-      ${unlocked("jdMatch") ? `
-      <div class="card">
-        <div class="row between"><h3 style="margin:0">JD 匹配分數</h3><span class="chip chip-real">已解鎖</span></div>
-        <div class="scorewrap"><div class="score">${ALAN_JOB.match.score}<small>/100</small></div>
-          <div class="sub" style="margin:0">${ALAN_JOB.company} · ${ALAN_JOB.position}</div></div>
-        ${ALAN_JOB.match.parts.map(p=>`
-          <div class="mrow"><span class="mk">${p.k}</span>
-            <div class="bar"><i style="width:${p.v}%" class="${p.v>=70?'b-強':p.v>=40?'b-中':'b-弱'}"></i></div>
-            <span class="mv">${p.v}</span></div>`).join("")}
-        <button class="btn block subtle" data-goto="job" style="margin-top:10px">看完整分析 →</button>
-      </div>` : lockCard(LOCKS[1])}
-
-      ${unlocked("appTable")
-        ? `<button class="linklike" data-goto="apps">投遞結果、進度已解鎖 → 看完整紀錄</button>`
-        : lockCard(LOCKS[2])}
     </div>`;
 }
 
@@ -529,11 +513,9 @@ function renderResume() {
                <div class="sub" style="margin:4px 0 0">沒有履歷也能用，但上傳之後才會出現
                  <b>適配職缺方向建議</b>與<b>履歷調整方向</b>。</div>
              </div>`}
-      </div>
 
-      ${full ? `<div class="mock-note">已達 ${MAX_RESUMES} 份上限，要新增請先刪掉一份。</div>` : `
-      <div class="card">
-        <h3>新增一份</h3>
+        ${full ? `<div class="mock-note" style="margin-top:12px">已達 ${MAX_RESUMES} 份上限，要新增請先刪掉一份。</div>` : `
+        <h3 style="margin-top:16px">新增一份</h3>
         <div class="upl" id="uplBox">
           <input type="file" id="resFile" accept=".pdf,.txt,.md" hidden>
           <div class="ui2">📎</div>
@@ -543,8 +525,8 @@ function renderResume() {
         <input class="field" id="resLabel" placeholder="版本名稱（例：主力版、產品經理版）" value="${state.draftLabel || ""}">
         <textarea class="field" id="resText" placeholder="貼上履歷全文，或先上傳 PDF">${state.draftText || ""}</textarea>
         <button class="btn block" id="addResBtn" style="margin-top:10px">＋ 新增履歷</button>
-        <button class="linklike" id="useMyResume" type="button">帶入示範履歷 →</button>
-      </div>`}
+        <button class="linklike" id="useMyResume" type="button">帶入示範履歷 →</button>`}
+      </div>
     </div>`;
 }
 
