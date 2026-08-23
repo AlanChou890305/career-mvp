@@ -327,7 +327,7 @@
   <h1>Happy Path 使用者流程</h1>
   <p class="standfirst">一條從空白狀態走到面試後回饋的完整路線，用來對外 demo，也用來確認兩個核心價值在畫面上真的走得通。</p>
   <div class="meta">
-    <span>8 個步驟</span>
+    <span>9 個步驟（含 5a／5b）</span>
     <span>預估 6–8 分鐘</span>
     <span>驗證 N16 · N19</span>
     <span>2026-08-22</span>
@@ -366,7 +366,7 @@
           <dt>動作</dt><dd>積極程度 → <strong>職涯目標（打字）</strong> → 技能 → 職稱 → 產業</dd>
           <dt>系統</dt><dd>五題答完進主頁</dd>
           <dt>要說</dt><dd class="say">第 2 題是全程唯一的自然語言輸入。現場真的打一段字，不要用捷徑帶入——後面主頁的目標解析要能回指到這段話，觀眾才會相信那不是預先寫好的</dd>
-          <dt>驗證</dt><dd>輸入成本。五題要在一分鐘內答得完，否則真實使用者不會走到第 2 步</dd>
+          <dt>敘事</dt><dd>不是驗證點——受測者是設計者本人，測不出真實使用者填不填得完，這條沿用共同決定的不驗證清單</dd>
         </dl>
       </div>
     </div>
@@ -378,50 +378,59 @@
         <dl>
           <dt>動作</dt><dd>往下滑：3 年／5 年目標、工作類型三層（理想／目標／可接受）、技能雷達</dd>
           <dt>要說</dt><dd class="say">「這些不是你從選單裡挑的，是從剛剛那一段話解出來的。」這是 N16 的第一個證據點</dd>
-          <dt>驗證</dt><dd><strong>歸納協助度</strong>——看到的人會不會說「這比我自己寫的更清楚」。這是唯一可以現場問觀眾的一題</dd>
+          <dt>敘事</dt><dd>現場問觀眾「這比自己寫的更清楚嗎」是個好橋段，但不算驗證——受測者是設計者本人，這一題測不到真實使用者的反應</dd>
           <dd class="check" style="grid-column: 1 / -1">畫面上三張鎖卡要看得到。鎖是敘事的一部分：它在說「要更多才給更多」，不是缺陷</dd>
         </dl>
       </div>
     </div>
 
-    <div class="stepcard gap">
+    <div class="stepcard">
       <div class="sn">3</div>
       <div class="sbody">
-        <div class="shead"><h3>上傳履歷</h3><span class="where">履歷</span><span class="tag tofix">要改文案</span></div>
+        <div class="shead"><h3>上傳履歷</h3><span class="where">履歷</span><span class="tag built">已有</span></div>
         <dl>
           <dt>動作</dt><dd>貼上或用捷徑帶入履歷 → 回主頁，<strong>適配職缺方向建議</strong>解鎖</dd>
           <dt>系統</dt><dd>方向建議、你可能沒發現的資產、短板、履歷調整方向一次長出來</dd>
           <dt>要說</dt><dd class="say">「資產」那一段是重點：它講的是使用者自己沒意識到的東西，不是把履歷換句話說</dd>
           <dt>驗證</dt><dd><strong>歸納協助度</strong>——「你可能沒發現的資產」有沒有真的講出使用者沒想到的事</dd>
-          <dt>要改</dt><dd><em>「帶入 Alan 的履歷 →」要改成中性字。</em>人名在 demo 裡會被讀成開發者後門</dd>
-        </dl>
-      </div>
-    </div>
-
-    <div class="stepcard gap">
-      <div class="sn">4</div>
-      <div class="sbody">
-        <div class="shead"><h3>AI 反問你</h3><span class="where">進階問題</span><span class="tag missing">尚未實作</span></div>
-        <dl>
-          <dt>動作</dt><dd>看 3–5 個追問（每題附「為什麼問這題」）→ 回答其中 1–2 題 → 回答回填進主頁的歸納</dd>
-          <dt>系統</dt><dd>來源是 <code>prompts/d-gap-diagnosis.md</code> 的第三區塊「我需要你補充的問題」，實際輸出在 <code>private/gap-diagnosis-output.md</code></dd>
-          <dt>要說</dt><dd class="say">這是整段 demo 唯一能回答「跟把履歷貼給 ChatGPT 差在哪」的畫面。<strong>它先搞懂你，才給建議</strong>，而不是讀完就開始講</dd>
-          <dt>驗證</dt><dd><strong>進階問題</strong>——追問有沒有問到「使用者答得出來、但履歷上看不到」的東西。這是 N16 的核心，不是附加功能</dd>
-          <dt>缺口</dt><dd><em>目前 app 完全沒有這個畫面。</em>prompt 產出過、輸出檔也在，但只有前兩個區塊被搬進「履歷上講不清楚的地方」。另外 <code>heuristics.js</code> 那 101 行本機規則引擎原本是給這一步用的，現在是死碼</dd>
         </dl>
       </div>
     </div>
 
     <div class="stepcard">
-      <div class="sn">5</div>
+      <div class="sn">5a</div>
       <div class="sbody">
-        <div class="shead"><h3>貼 JD，勾要做的準備</h3><span class="where">職缺</span><span class="tag tofix">要改文案</span></div>
+        <div class="shead"><h3>貼 JD</h3><span class="where">職缺</span><span class="tag built">已補上</span></div>
         <dl>
-          <dt>動作</dt><dd>貼 JD → 匹配分數與三層落差（符合／證據薄／缺口）→ <strong>面試前準備勾 2–3 條「我打算做」</strong></dd>
+          <dt>動作</dt><dd>貼上或帶入示範 JD → 進入「AI 先搞懂你，再給建議」畫面</dd>
+          <dt>系統</dt><dd>貼上 JD 後不會立刻給匹配分數——先進追問，這是敘事的重點：分數是被延後的</dd>
+          <dt>要說</dt><dd class="say">JD 一貼上，AI 不是馬上打分數，是先問你幾個問題</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="stepcard key">
+      <div class="sn">4</div>
+      <div class="sbody">
+        <div class="shead"><h3>AI 反問你</h3><span class="where">追問</span><span class="tag built">已補上</span></div>
+        <dl>
+          <dt>動作</dt><dd>看資訊完整度的缺口與 3–5 個追問（每題附「為什麼問這題」）→ 回答其中 1–2 題 → 回主頁看回填的歸納</dd>
+          <dt>系統</dt><dd>內容來自 <code>demo-data.json</code>，來源是 <code>prompts/d-gap-diagnosis.md</code> 的第三區塊，實際輸出在 <code>private/gap-diagnosis-output.md</code></dd>
+          <dt>要說</dt><dd class="say">這是整段 demo 唯一能回答「跟把履歷貼給一般 AI 聊天工具差在哪」的畫面。<strong>它先搞懂你，才給建議</strong>，而不是讀完就開始講</dd>
+          <dt>驗證</dt><dd><strong>進階問題</strong>——追問有沒有問到「使用者答得出來、但履歷上看不到」的東西。這是 N16 的核心，不是附加功能</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="stepcard">
+      <div class="sn">5b</div>
+      <div class="sbody">
+        <div class="shead"><h3>匹配分數與面試前準備</h3><span class="where">職缺</span><span class="tag built">已補上</span></div>
+        <dl>
+          <dt>動作</dt><dd>回答至少 1 題追問後解鎖：匹配分數與三層落差（符合／證據薄／缺口）→ <strong>面試前準備勾 2–3 條「我打算做」</strong></dd>
           <dt>系統</dt><dd>同時長出「最可能被問倒的一題」與「AI 猜這場會問的 8 題」</dd>
           <dt>要說</dt><dd class="say">勾選這個動作就是在立假設。勾了什麼、之後有沒有做、做了有沒有用上——步驟 8 全部要結算</dd>
           <dt>驗證</dt><dd><strong>行動推薦</strong>的前半：建議具體到讓人願意勾嗎</dd>
-          <dt>要改</dt><dd><em>「帶入 Alan 的目標職缺 →」同步改成中性字。</em></dd>
         </dl>
       </div>
     </div>
@@ -429,13 +438,12 @@
     <div class="stepcard">
       <div class="sn">6</div>
       <div class="sbody">
-        <div class="shead"><h3>記一筆投遞</h3><span class="where">投遞</span><span class="tag tofix">有 bug</span></div>
+        <div class="shead"><h3>記一筆投遞</h3><span class="where">投遞</span><span class="tag built">bug 已修</span></div>
         <dl>
           <dt>動作</dt><dd>新增一筆，狀態選<strong>「進面試」</strong>（沒選這個，步驟 7 的入口不會出現）</dd>
           <dt>系統</dt><dd>解鎖投遞漏斗與「履歷版本 × 成效」</dd>
-          <dt>要說</dt><dd class="say">「改履歷有沒有用」只有在這裡看得出來——同一批職缺、不同版本的被查看率。這是累積才有的東西，不是單次</dd>
+          <dt>要說</dt><dd class="say">「改履歷有沒有用」只有在這裡看得出來——同一批職缺、不同版本的被查看率。這裡是容器的示意：畫面上只有一筆資料，真正看出差異需要同一個人投遞很多次、累積很多筆之後才有意義</dd>
           <dt>驗證</dt><dd><strong>可驗證性（N19）</strong>的容器。這一塊要使用者回來更新才會長出東西，也就是護城河的形狀</dd>
-          <dt>要修</dt><dd><em>已附 JD 的那筆按下去會白畫面</em>——<code>app.js:1141</code> 設了 <code>state.tab = "questions"</code>，但 <code>RENDERERS</code>（<code>app.js:886</code>）沒有這個 key。demo 時被點到就掛</dd>
         </dl>
       </div>
     </div>
@@ -443,13 +451,12 @@
     <div class="stepcard key">
       <div class="sn">7</div>
       <div class="sbody">
-        <div class="shead"><h3>寫下實際被問的題，鎖定</h3><span class="where">面試後回饋</span><span class="tag tofix">要改文案</span></div>
+        <div class="shead"><h3>寫下實際被問的題，鎖定</h3><span class="where">面試後回饋</span><span class="tag built">文案已改</span></div>
         <dl>
-          <dt>動作</dt><dd>那筆投遞 → 填面試後回饋 → 憑記憶寫 4–5 題 → <strong>鎖定</strong></dd>
+          <dt>動作</dt><dd>那筆投遞 → 填面試後回饋 → 憑記憶寫幾題 → <strong>鎖定</strong>。面試還沒發生時，可以先按「帶入示意資料」看畫面該長什麼樣</dd>
           <dt>系統</dt><dd>鎖定後不可修改，記下鎖定時間</dd>
           <dt>要說</dt><dd class="say">順序不能顛倒：先寫再看，才知道 AI 猜得準不準。這是整個產品裡唯一「不能事後圓回來」的地方</dd>
           <dt>驗證</dt><dd><strong>可驗證性（N19）</strong>——18 個競品全部沒有的那一步：給完建議之後回來對答案</dd>
-          <dt>要改</dt><dd><em>去掉「沒有事後修改記憶的證明」這種方法論口吻。</em>同一件事講成使用者的語言</dd>
         </dl>
       </div>
     </div>
@@ -457,12 +464,11 @@
     <div class="stepcard key">
       <div class="sn">8</div>
       <div class="sbody">
-        <div class="shead"><h3>結算</h3><span class="where">面試後回饋 → 職缺</span><span class="tag tofix">要改文案</span></div>
+        <div class="shead"><h3>結算</h3><span class="where">面試後回饋 → 職缺</span><span class="tag built">文案已改</span></div>
         <dl>
-          <dt>動作</dt><dd>勾「做了／用上了」→ 沒做的填原因 → 回職缺分頁逐題比對 AI 猜的 8 題</dd>
+          <dt>動作</dt><dd>面試前一天先填「做了嗎」→ 面試後填「用上了嗎／有沒有幫助」→ 逐條回填 AI 事前指出的落差有沒有真的被碰到 → 回職缺分頁比對 AI 猜的 8 題</dd>
           <dt>要說</dt><dd class="say">收在這一句：「所以那份建議準不準，這裡看得出來。」不是承諾很準，是承諾看得到準不準</dd>
-          <dt>驗證</dt><dd><strong>行動推薦</strong>的後半——採用率（打算做 → 真的做了）與「做了且用上」的條數。「沒做的原因」那一格是全流程資訊量最高的一欄</dd>
-          <dt>要改</dt><dd><em>「對照失敗門檻」整張卡要重寫。</em>N16／N19 代號、「對照盲測 37.6%」、「依計畫書規則結論作廢」全部是內部語言</dd>
+          <dt>驗證</dt><dd><strong>行動推薦</strong>的後半——採用率（打算做 → 真的做了）與「做了且用上」的條數；缺口診斷有沒有真的被問到，是行動推薦的上游。「沒做的原因」那一格是全流程資訊量最高的一欄</dd>
         </dl>
       </div>
     </div>
@@ -481,6 +487,7 @@
         <tr><td>示範模式開關</td><td>觀眾只會問「所以我看到的是假的嗎」</td><td>開場前就設定好，畫面上不出現狀態列</td></tr>
         <tr><td>履歷版本管理</td><td>它服務的是步驟 6 的成效對照，單獨看只是 CRUD</td><td>在步驟 6 順帶提一句就夠</td></tr>
         <tr><td>面試上了沒</td><td>一個 bit 的雜訊，被薪資、內定、面試官偏好污染</td><td>「我們看的是面試官實際問了什麼」</td></tr>
+        <tr><td>長期陪伴／每週一題</td><td>需要時間才有意義，這輪做出來是空殼</td><td>「累積是護城河，但要靠使用者一直回來才長出來，這輪只有一筆」</td></tr>
       </tbody>
     </table>
   </div>
@@ -501,22 +508,22 @@
     <li>localStorage 已清空，畫面停在 onboarding 第 1 題</li>
     <li>示範模式（遮蔽公司名）已設定成想要的狀態</li>
     <li>履歷與 JD 的捷徑按鈕文案已改成中性字</li>
-    <li><code>app.js:1141</code> 的白畫面已修，或確定不點到那顆按鈕</li>
-    <li>「對照失敗門檻」卡已改成使用者語言</li>
-    <li>內部驗證入口已從主頁與設定移除</li>
-    <li>步驟 4 的進階問題畫面已補上，或已準備好口頭說明為什麼還沒有</li>
-    <li>步驟 7 要寫的 4–5 題面試問題先想好，不要現場卡住</li>
+    <li>已附 JD 的投遞紀錄按下去能正常進追問畫面，不會白畫面</li>
+    <li>「這批建議與追問，準不準」卡已改成使用者語言，內部代號都不在畫面上</li>
+    <li>內部驗證入口已從主頁與設定移除，改成 <code>#validation</code> 網址入口</li>
+    <li>步驟 7、8 要用的示意資料先看過一遍，知道哪裡會顯示「面試尚未發生」的提示</li>
+    <li>如果要 demo 打包後的單檔，<code>dist/index.html</code> 已用 <code>build.sh</code> 重新產生過</li>
   </ul>
 </section>
 
 <section>
   <h2>時間不夠時的短版</h2>
-  <p class="lede">只有 3 分鐘的話，跳過 1–3，從已經有履歷與 JD 的中段起點開始，走 <span class="num">4 → 5 → 7 → 8</span>。兩個核心驗證點都還在，敘事從「它先搞懂你」直接接到「它回來對答案」。前提是要有一個把狀態重設到中段的入口。</p>
+  <p class="lede">只有 3 分鐘的話，跳過 1–3，從已經有履歷與 JD 的中段起點開始，走 <span class="num">4 → 5b → 7 → 8</span>。兩個核心驗證點都還在，敘事從「它先搞懂你」直接接到「它回來對答案」。前提是要有一個把狀態重設到中段的入口。</p>
 </section>
 
 <footer>
   流程對應 <code>alan/mvp-plan.md</code> 與 <code>docs/validation-plan.md</code>。<br>
-  步驟 4 的缺口與步驟 6 的 bug 尚未修，清單上打勾之後這份文件要跟著更新。
+  這份文件與 <code>alan/webapp/</code> 的實際完成狀態已對齊（2026-08-22 這次更新）；之後有落差要再回來改。
 </footer>
 
 </div>
