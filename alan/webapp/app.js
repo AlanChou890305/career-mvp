@@ -2,12 +2,14 @@
 // 不接資料庫、不接登入伺服器，狀態存在瀏覽器 localStorage。
 //
 // 產品體驗 vs. 內部驗證，刻意分開：
-//   - 一般畫面（onboarding、首頁、履歷、進階問題、投遞、履歷版本）是「假裝這是真產品」
+//   - 一般畫面（onboarding、首頁、履歷、追問、職缺、投遞、履歷版本）是「假裝這是真產品」
 //     的體驗——不會出現「示範 persona」「真實語料 vs 假資料」這類內部用語。
-//   - 3 篇真實面試心得語料 + 命中率，是團隊要驗證的東西，不是產品功能，所以收在首頁最
-//     下面一個不起眼的連結「🔬 內部驗證資料」裡，一般使用流程不會撞到它。
-//   - 「進階問題」用的規則引擎（heuristics.js）讀取的是使用者自己在履歷/JD 打的文字，
-//     不是查表。
+//   - 3 篇真實面試心得語料 + 命中率，是團隊要驗證的東西，不是產品功能，一般使用流程
+//     不會撞到它，入口是網址後面加 #validation。
+//
+// 內容資料（履歷、職缺、追問、面試回饋）不寫死在這支檔案裡，從 demo-data.json 載入，
+// 見 loadData()。打包成單檔時，build 腳本會把這份 JSON 連同遮蔽規則一起 inline 進去，
+// 屆時走 window.__DEMO_DATA__ 這條路徑，不再 fetch。
 
 const STORAGE_KEY = "alan_mvp_demo_v1";
 const TABS = [
@@ -71,8 +73,8 @@ const OB_STEPS = ["積極程度", "職涯目標", "技能", "職稱", "產業"];
 const LOCKS = [
   { id: "fitAdvice", name: "適配職缺方向建議", need: "上傳履歷", tab: "resume",
     why: "要讀得到你的實際經歷，才給得出方向，不然只能照職稱猜。" },
-  { id: "jdMatch", name: "JD 匹配分數", need: "貼一份 JD", tab: "job",
-    why: "分數是「你 × 這份 JD」算出來的，沒有 JD 就沒有對照對象。" },
+  { id: "jdMatch", name: "JD 匹配分數", need: "貼一份 JD並回答追問", tab: "job",
+    why: "分數是「你 × 這份 JD」算出來的，而且要先回答過 AI 的追問——匹配分數是被延後的，不是貼上 JD 就立刻給。" },
   { id: "appTable", name: "投遞結果、進度數據表", need: "新增一筆投遞紀錄", tab: "apps",
     why: "這一塊要你回來更新才會長出東西——它量的是累積，不是單次。" },
 ];
@@ -92,12 +94,13 @@ function defaultState() {
     draftLabel: "",
     draftText: "",
     jd: "",
-    heuristicResults: [],
+    followupAnswers: {},   // AI 追問的回答：{f1:"..."}
     applications: [],
     resumeVersions: [],
     recAdoption: {},
     planAdopt: {},     // 方向型建議：{p1:{done:true}}
-    prepAdopt: {},     // 面試準備：{j1:{planned,didIt,usedIt,note}}
+    prepAdopt: {},     // 面試準備：{j1:{planned, didIt, note, usedIt, usefulness}}
+    gapHitAnswers: {}, // 缺口診斷命中：{g1:"沒被碰到"}
     actualRaw: "",     // 面試官實際問的問題（一行一題）
     actualLocked: false,
     actualLockedAt: null,
@@ -119,6 +122,25 @@ function loadState() {
 
 let state = loadState();
 function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+// ================= 資料層 =================
+// 開發模式：同源 fetch demo-data.json（見 serve.sh）。
+// 打包成單檔後：build 腳本會在這支檔案載入前寫入 window.__DEMO_DATA__，
+// 這裡改讀那個全域變數，不再發 fetch（file:// 開啟時 fetch 本機檔案會被瀏覽器擋）。
+let ALAN = null, ALAN_JOB = null, INTERVIEW_DEMO = null;
+
+function applyData(data) {
+  ALAN = data.profile;
+  ALAN_JOB = data.job;
+  INTERVIEW_DEMO = data.interviewDemo;
+}
+
+async function loadData() {
+  if (window.__DEMO_DATA__) { applyData(window.__DEMO_DATA__); return; }
+  const res = await fetch("demo-data.json");
+  if (!res.ok) throw new Error("demo-data.json 讀不到，本機請用 serve.sh 開伺服器，不要直接開檔案");
+  applyData(await res.json());
+}
 function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; }
 
 function toast(msg) {
@@ -170,7 +192,7 @@ function obShell(n, title, hint, body, wide) {
         ${n > 0 ? `<button class="btn back" id="obBack">← 上一步</button>` : ""}
         <button class="btn" id="obNextBtn">${last ? "產生我的 Dashboard" : "下一步 →"}</button>
       </div>
-      ${n === 0 ? `<button class="linklike" id="useSampleBtn" type="button">用 Alan 的資料快速體驗 →</button>` : ""}
+      ${n === 0 ? `<button class="linklike" id="useSampleBtn" type="button">用示範資料快速體驗 →</button>` : ""}
     </div>`;
 }
 
@@ -275,7 +297,7 @@ function wireOnboarding() {
       industries: ["軟體／SaaS", "餐飲科技", "金融科技"],
     };
     state.onboarded = true; state.tab = "home";
-    saveState(); toast("已帶入 Alan 的資料"); render();
+    saveState(); toast("已帶入示範資料"); render();
   });
 
   document.getElementById("obNextBtn").addEventListener("click", () => {
@@ -291,29 +313,35 @@ function wireOnboarding() {
 
 // ================= 主要 App（onboarding 完成後） =================
 
+function answeredFollowupIds() {
+  return Object.keys(state.followupAnswers).filter((id) => (state.followupAnswers[id] || "").trim().length > 0);
+}
+
 function computeStats() {
   const recEntries = Object.values(state.recAdoption);
   const triedCount = recEntries.filter((r) => r.tried).length;
   const usefulCount = recEntries.filter((r) => r.tried && r.useful).length;
+  const qCount = answeredFollowupIds().length;
   const filled = [
     state.resume.trim().length > 30,
     state.jd.trim().length > 10,
     state.applications.length > 0,
     state.resumeVersions.length > 0,
-    state.heuristicResults.length > 0,
+    qCount > 0,
   ];
   const completeness = Math.round((filled.filter(Boolean).length / filled.length) * 100);
   const freq = {};
   state.applications.forEach((a) => { freq[a.position] = (freq[a.position] || 0) + 1; });
   const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
-  return { triedCount, usefulCount, completeness, topRole: sorted[0], apps: state.applications.length, versions: state.resumeVersions.length, qCount: state.heuristicResults.length };
+  return { triedCount, usefulCount, completeness, topRole: sorted[0], apps: state.applications.length, versions: state.resumeVersions.length, qCount };
 }
 
 function lv(x){ return x==="強"?100:x==="中"?60:30 }
 function planDone(id){ return !!(state.planAdopt[id]||{}).done }
 function unlocked(id){
   if (id==="fitAdvice") return state.resumes.length > 0;
-  if (id==="jdMatch")   return state.jd.trim().length > 10;
+  if (id==="jdHasFollowups") return state.jd.trim().length > 10;
+  if (id==="jdMatch")   return state.jd.trim().length > 10 && answeredFollowupIds().length > 0;
   if (id==="appTable")  return state.applications.length > 0;
   return false;
 }
@@ -372,6 +400,16 @@ function renderHome() {
         <div class="goal"><span class="gy">3 年</span><div>${D.goal3}</div></div>
         <div class="goal"><span class="gy gy5">5 年</span><div>${D.goal5}</div></div>
       </div>
+
+      ${answeredFollowupIds().length ? `
+      <div class="card">
+        <h3>你補充的背景資訊</h3>
+        <div class="sub">回答「AI 追問」之後回填在這裡，會一起用來調整方向建議與匹配分數</div>
+        ${answeredFollowupIds().map(id => {
+          const f = ALAN_JOB.diagnosis.followups.find(x => x.id === id);
+          return f ? `<div class="ast"><div class="cn">${f.q}</div><div class="sub">${state.followupAnswers[id]}</div></div>` : "";
+        }).join("")}
+      </div>` : ""}
 
       <div class="card">
         <h3>工作類型</h3>
@@ -437,17 +475,9 @@ function renderHome() {
         <button class="btn block subtle" data-goto="job" style="margin-top:10px">看完整分析 →</button>
       </div>` : lockCard(LOCKS[1])}
 
-      ${unlocked("appTable") ? `
-      <div class="card">
-        <div class="row between"><h3 style="margin:0">投遞結果、進度</h3><span class="chip chip-real">已解鎖</span></div>
-        <div class="statgrid" style="margin:10px 0 0">
-          <div class="stat"><div class="ic">📮</div><div class="n">${state.applications.length}</div><div class="l">投遞數</div></div>
-          <div class="stat"><div class="ic">💬</div><div class="n">${state.applications.filter(a=>a.status==="進面試").length}</div><div class="l">進面試</div></div>
-        </div>
-        <button class="btn block subtle" data-goto="apps" style="margin-top:10px">看完整紀錄 →</button>
-      </div>` : lockCard(LOCKS[2])}
-
-      <button class="linklike" id="gotoValidation">🔬 內部驗證資料（給組員看）</button>
+      ${unlocked("appTable")
+        ? `<button class="linklike" data-goto="apps">投遞結果、進度已解鎖 → 看完整紀錄</button>`
+        : lockCard(LOCKS[2])}
     </div>`;
 }
 
@@ -513,7 +543,7 @@ function renderResume() {
         <input class="field" id="resLabel" placeholder="版本名稱（例：主力版、產品經理版）" value="${state.draftLabel || ""}">
         <textarea class="field" id="resText" placeholder="貼上履歷全文，或先上傳 PDF">${state.draftText || ""}</textarea>
         <button class="btn block" id="addResBtn" style="margin-top:10px">＋ 新增履歷</button>
-        <button class="linklike" id="useMyResume" type="button">帶入 Alan 的履歷 →</button>
+        <button class="linklike" id="useMyResume" type="button">帶入示範履歷 →</button>
       </div>`}
     </div>`;
 }
@@ -522,15 +552,28 @@ function prepSt(id){ return state.prepAdopt[id]||{} }
 
 function renderJob() {
   const J = ALAN_JOB;
+
+  if (!unlocked("jdHasFollowups")) {
+    return `
+    <div class="view">
+      <div class="h1">這份職缺</div>
+      <p class="sub">貼上一份 JD，AI 會先指出落差、追問幾個問題，回答之後才會給匹配分數與面試前準備。</p>
+      <div class="card">
+        <h3>職缺 JD</h3>
+        <textarea id="jdInput" placeholder="貼上職缺描述…">${state.jd}</textarea>
+        <button class="linklike" id="useMyJd" type="button">帶入示範資料 →</button>
+      </div>
+    </div>`;
+  }
+
   if (!unlocked("jdMatch")) {
     return `
     <div class="view">
       <div class="h1">這份職缺</div>
-      <p class="sub">貼上一份 JD，會解鎖匹配分數、面試前準備與 AI 猜的 8 題。</p>
       <div class="card">
-        <h3>職缺 JD</h3>
-        <textarea id="jdInput" placeholder="貼上職缺描述…">${state.jd}</textarea>
-        <button class="linklike" id="useMyJd" type="button">帶入 Alan 的目標職缺 →</button>
+        <div class="row between"><h3 style="margin:0">JD 已收到</h3><span class="chip chip-live">${J.company} · ${J.position}</span></div>
+        <div class="sub">在給你匹配分數之前，AI 先指出幾個落差、想追問幾個問題——回答至少 1 題之後才會顯示匹配分數與面試前準備。</div>
+        <button class="btn block" data-goto="questions" style="margin-top:10px">看 AI 的追問 →</button>
       </div>
       ${lockCard(LOCKS[1])}
     </div>`;
@@ -586,21 +629,53 @@ function renderJob() {
     </div>`;
 }
 
+function renderQuestions() {
+  const J = ALAN_JOB, D = J.diagnosis;
+  const answered = answeredFollowupIds();
+  return `
+    <div class="view">
+      <button class="linklike" id="backFromQuestions">← 回到職缺</button>
+      <div class="h1">AI 先搞懂你，再給建議</div>
+      <p class="sub">這是整段體驗裡唯一在回答「跟把履歷貼給一般 AI 聊天工具差在哪」的畫面——它先指出資訊哪裡不夠、跟這份 JD 差在哪，再問你幾個問題。匹配分數與面試前準備要等你回答之後才會出現。</p>
+
+      <div class="card">
+        <h3>資訊完整度：這幾塊還看不清楚</h3>
+        ${D.completenessGaps.map(g => `<div class="ast"><div class="cn">${g.t}</div><div class="sub">${g.d}</div></div>`).join("")}
+      </div>
+
+      <div class="card">
+        <div class="row between"><h3 style="margin:0">AI 想追問你的問題</h3><span class="chip chip-live">已答 ${answered.length}/${D.followups.length}</span></div>
+        ${D.followups.map(f => `
+          <div class="rec ${state.followupAnswers[f.id] && state.followupAnswers[f.id].trim() ? "on" : ""}">
+            <div class="rt">${f.q}</div>
+            <div class="sub"><b>為什麼問這題</b>　${f.why}</div>
+            <textarea class="full" data-followup="${f.id}" placeholder="在這裡回答…" style="margin-top:8px">${state.followupAnswers[f.id] || ""}</textarea>
+          </div>`).join("")}
+      </div>
+
+      ${answered.length > 0
+        ? `<button class="btn block" data-goto="job" style="margin-top:4px">回答完了，看匹配分數與面試前準備 →</button>`
+        : `<div class="mock-note">先回答至少 1 題，才會解鎖匹配分數與面試前準備。</div>`}
+    </div>`;
+}
+
 function renderAfter() {
-  const J = ALAN_JOB;
+  const J = ALAN_JOB, ID = INTERVIEW_DEMO;
   const app = state.applications.find(a => a.id === state.afterAppId);
   const L = state.actualLocked;
   const acts = state.actualRaw.split("\n").map(x => x.trim()).filter(Boolean);
   const didUsed = J.prep.filter(p => prepSt(p.id).didIt && prepSt(p.id).usedIt).length;
   const did = J.prep.filter(p => prepSt(p.id).didIt).length;
   const planned = J.prep.filter(p => prepSt(p.id).planned).length;
+  const gapHitLabels = ["沒被碰到", "被碰到但沒追問", "被追問", "答不好"];
 
   return `
     <div class="view">
       <button class="linklike" id="backFromAfter">← 回到投遞紀錄</button>
       <div class="h1">面試後回饋</div>
       <div class="sub">${app ? `${app.company} · ${app.position}　<span class="chip chip-live">${app.date || ""}</span>` : ""}</div>
-      <p class="sub">順序不能顛倒：先憑記憶寫下實際被問的題並鎖定，才回「職缺」比對 AI 猜的 8 題。鎖定時間就是「沒有事後修改記憶」的證明。</p>
+      <p class="sub">順序不能顛倒：先憑記憶寫下實際被問的題並鎖定，才回「職缺」比對 AI 猜的 8 題。鎖定的時間會存下來，這樣才知道自己是真的記得，不是看了答案之後才想起來的。</p>
+      ${ID.isMock ? `<div class="mock-note">${ID.note}（面試窗口：${ID.window}）</div>` : ""}
 
       <div class="card">
         <div class="row between"><h3 style="margin:0">① 面試官實際問了什麼</h3>
@@ -609,38 +684,75 @@ function renderAfter() {
           ? `<ol class="acts">${acts.map(a => `<li>${a}</li>`).join("")}</ol>
              <div class="sub">鎖定於 ${state.actualLockedAt}　共 ${acts.length} 題</div>`
           : `<textarea id="actualIn" placeholder="一行一題，憑記憶寫，不要先去看 AI 猜的">${state.actualRaw}</textarea>
-             <button class="btn block" id="lockBtn" style="margin-top:10px">🔒 鎖定（之後不能改）</button>`}
+             <button class="btn block" id="lockBtn" style="margin-top:10px">🔒 鎖定（之後不能改）</button>
+             <button class="linklike" id="useMockActual" type="button">面試還沒發生？先帶入示意資料看畫面 →</button>`}
       </div>
 
       <div class="card">
-        <h3>② 勾的準備，做了嗎？用上了嗎？</h3>
+        <h3>② AI 事前指出的落差，面試中真的碰到了嗎</h3>
+        <div class="sub">這是行動推薦的上游：AI 說「這裡講不清楚」，準不準要在這裡對答案。</div>
+        ${J.resumeGaps.map((g, i) => {
+          const id = "g" + (i + 1);
+          const cur = state.gapHitAnswers[id] || "";
+          return `<div class="rec">
+            <div class="rt">${g.t}</div>
+            <div class="sub">${g.d}</div>
+            <select data-gaphit="${id}" style="margin-top:6px">
+              <option value="">面試後再填…</option>
+              ${gapHitLabels.map(l => `<option value="${l}" ${cur === l ? "selected" : ""}>${l}</option>`).join("")}
+            </select>
+          </div>`;
+        }).join("")}
+        ${ID.isMock ? `<button class="linklike" id="useMockGapHits" type="button">帶入示意資料 →</button>` : ""}
+      </div>
+
+      <div class="card">
+        <h3>③ 面試前一天：做了嗎？</h3>
+        <div class="sub">這一格要在面試前一天填，不是面試後回想——「做了沒」是面試前就該是的事實。純展示模式下這裡示範這個時點該長什麼樣。</div>
         ${planned === 0 ? `<div class="mock-note">還沒在「職缺」分頁勾任何一條「我打算做」。</div>`
         : J.prep.filter(p => prepSt(p.id).planned).map(p => { const st = prepSt(p.id); return `
           <div class="rec">
             <div class="rt">${p.t}</div>
             <div class="rec-row">
               <label><input type="checkbox" data-pf="${p.id}" data-f="didIt" ${st.didIt ? "checked" : ""}> 做了</label>
-              <label><input type="checkbox" data-pf="${p.id}" data-f="usedIt" ${st.usedIt ? "checked" : ""}> 面試中用上了</label>
             </div>
             ${st.didIt ? "" : `<input class="full" data-note="${p.id}" placeholder="沒做的原因（這格的回答最有價值）" value="${(st.note || "").replace(/"/g, "&quot;")}">`}
           </div>`; }).join("")}
       </div>
 
       <div class="card">
-        <h3>③ 對照失敗門檻</h3>
+        <h3>④ 面試後：用上了嗎？有沒有幫助？</h3>
+        <div class="sub">跟③分開填，避免「已經知道哪條有用」污染「當初做了沒」的記憶。</div>
+        ${planned === 0 ? `<div class="mock-note">還沒有勾任何一條準備。</div>`
+        : J.prep.filter(p => prepSt(p.id).planned && prepSt(p.id).didIt).map(p => { const st = prepSt(p.id); return `
+          <div class="rec">
+            <div class="rt">${p.t}</div>
+            <div class="rec-row">
+              <label><input type="checkbox" data-pf="${p.id}" data-f="usedIt" ${st.usedIt ? "checked" : ""}> 面試中用上了</label>
+            </div>
+            <select data-usefulness="${p.id}" style="margin-top:6px">
+              <option value="">主觀有沒有幫助？（附記，不是主判準）</option>
+              ${["很有用","有點用","沒感覺","反而誤導"].map(l => `<option value="${l}" ${st.usefulness === l ? "selected" : ""}>${l}</option>`).join("")}
+            </select>
+          </div>`; }).join("")}
+        ${J.prep.filter(p => prepSt(p.id).planned && !prepSt(p.id).didIt).length ? `<div class="mock-note">有勾但③還沒填「做了」的，這裡不會出現——先回③填。</div>` : ""}
+      </div>
+
+      <div class="card">
+        <h3>⑤ 這批建議與追問，準不準</h3>
         <div class="thr">
-          <div class="tl">N19　做了且用上</div>
-          <div class="tv">${didUsed} 條　${didUsed >= 2 ? `<span class="tg tg-強">有證據</span>` : didUsed === 1 ? `<span class="tg tg-中">存疑</span>` : `<span class="tg tg-弱">不成立</span>`}</div>
+          <div class="tl">建議做了且用上</div>
+          <div class="tv">${didUsed} 條　${didUsed >= 2 ? `<span class="tg tg-強">看起來抓對方向</span>` : didUsed === 1 ? `<span class="tg tg-中">有一點效果，樣本太小不敢說</span>` : `<span class="tg tg-弱">目前沒有證據</span>`}</div>
         </div>
         <div class="thr">
-          <div class="tl">N16　命中率（對照盲測 37.6%）</div>
+          <div class="tl">追問命中率</div>
           <div class="tv">${L ? `待逐題比對（實際 ${acts.length} 題）` : `<span class="sub">等 ① 鎖定</span>`}</div>
         </div>
         <div class="thr">
           <div class="tl">採用率　打算做 → 真的做了</div>
           <div class="tv">${planned ? `${did}/${planned}` : `—`}</div>
         </div>
-        ${L && acts.length < 4 ? `<div class="pend">實際題數少於 4 題，依計畫書規則 N16 結論作廢，N19 不受影響。</div>` : ``}
+        ${L && acts.length < 4 ? `<div class="pend">面試官實際問的題數不到 4 題，樣本太少，這次的命中率參考價值有限。</div>` : ``}
       </div>
     </div>`;
 }
@@ -685,8 +797,6 @@ function renderSettings() {
         <div class="sub">AI 輸出由 <code>prompts/</code> 底下的 prompt 在本機跑出來後寫進資料檔，
           這個 demo 不即時呼叫 API。</div>
       </div>
-
-      <button class="linklike" id="gotoValidation">🔬 內部驗證資料（給組員看）</button>
     </div>`;
 }
 
@@ -773,7 +883,10 @@ function renderApps() {
         <button class="iconbtn" data-delapp="${a.id}">🗑️</button>
       </div>
       <div class="row between">
-        <span class="st">${a.resumeVersion} · ${a.status}${a.jd ? " · 已附 JD" : " · 未附 JD"}</span>
+        <span class="st">${a.resumeVersion} · ${a.status}${a.jd ? "" : " · 未附 JD"}</span>
+        ${a.jd ? `<button class="btn small subtle" data-useappjd="${a.id}">已附 JD → 看追問</button>` : ""}
+      </div>
+      <div class="row between">
         ${["進面試","收到 offer"].includes(a.status)
             ? `<button class="btn small ${state.afterAppId===a.id && state.actualLocked ? "subtle" : ""}" data-after="${a.id}">${state.afterAppId===a.id && state.actualLocked ? "✓ 已填回饋" : "↩ 填面試後回饋"}</button>`
             : `<span class="st">${a.date || ""}</span>`}
@@ -883,11 +996,11 @@ function renderValidation() {
 
 // ================= Router =================
 
-const RENDERERS = { home: renderHome, resume: renderResume, job: renderJob, apps: renderApps, after: renderAfter, settings: renderSettings, versions: renderVersions, validation: renderValidation };
+const RENDERERS = { home: renderHome, resume: renderResume, job: renderJob, questions: renderQuestions, apps: renderApps, after: renderAfter, settings: renderSettings, versions: renderVersions, validation: renderValidation };
 
 function renderTabbar() {
   const bar = document.getElementById("tabbar");
-  if (!state.onboarded || ["validation","after"].includes(state.tab)) { bar.style.display = "none"; return; }
+  if (!state.onboarded || ["validation","after","questions"].includes(state.tab)) { bar.style.display = "none"; return; }
   bar.style.display = "flex";
   bar.innerHTML = "";
   TABS.forEach((t) => {
@@ -925,8 +1038,6 @@ function wireTab() {
   screen.querySelectorAll("[data-goto]").forEach((btn) => btn.addEventListener("click", () => { state.tab = btn.dataset.goto; render(); }));
 
   if (state.tab === "home") {
-    const g = document.getElementById("gotoValidation");
-    if (g) g.addEventListener("click", () => { state.tab = "validation"; render(); });
     screen.querySelectorAll("input[data-plan]").forEach((cb) => {
       cb.addEventListener("change", () => {
         const id = cb.dataset.plan;
@@ -939,7 +1050,10 @@ function wireTab() {
   }
 
   if (state.tab === "validation") {
-    document.getElementById("backFromValidation").addEventListener("click", () => { state.tab = "home"; render(); });
+    document.getElementById("backFromValidation").addEventListener("click", () => {
+      history.replaceState(null, "", location.pathname + location.search);
+      state.tab = "home"; render();
+    });
     screen.querySelectorAll("[data-valpersona]").forEach((btn) => {
       btn.addEventListener("click", () => { state.validationPersonaId = btn.dataset.valpersona; state.validationRevealed = false; render(); });
     });
@@ -978,7 +1092,7 @@ function wireTab() {
     if (ab) ab.addEventListener("click", () => add(lab.value, txt.value));
 
     const um = document.getElementById("useMyResume");
-    if (um) um.addEventListener("click", () => add(lab.value || "Alan 的履歷", ALAN.resumeText));
+    if (um) um.addEventListener("click", () => add(lab.value || "示範履歷", ALAN.resumeText));
 
     const box = document.getElementById("uplBox"), fi = document.getElementById("resFile");
     if (box) {
@@ -1037,7 +1151,7 @@ function wireTab() {
               jt.addEventListener("blur", () => render()); }
     const uj = document.getElementById("useMyJd");
     if (uj) uj.addEventListener("click", () => {
-      state.jd = ALAN_JOB.jdText; saveState(); toast("🔓 已解鎖 JD 匹配分數"); render();
+      state.jd = ALAN_JOB.jdText; saveState(); toast("🔓 已解鎖追問"); render();
     });
     screen.querySelectorAll("input[data-prep]").forEach((cb) => {
       cb.addEventListener("change", () => {
@@ -1049,8 +1163,18 @@ function wireTab() {
     });
   }
 
+  if (state.tab === "questions") {
+    document.getElementById("backFromQuestions").addEventListener("click", () => { state.tab = "job"; render(); });
+    screen.querySelectorAll("[data-followup]").forEach((ta) => {
+      ta.addEventListener("input", () => {
+        state.followupAnswers[ta.dataset.followup] = ta.value;
+        saveState();
+      });
+      ta.addEventListener("blur", () => render());
+    });
+  }
+
   if (state.tab === "settings") {
-    document.getElementById("gotoValidation").addEventListener("click", () => { state.tab = "validation"; render(); });
     document.getElementById("maskSw").addEventListener("click", () => {
       state.demoMask = !state.demoMask; saveState();
       toast(state.demoMask ? "已遮蔽個資與公司名" : "已顯示真實資訊");
@@ -1078,12 +1202,32 @@ function wireTab() {
     if (lb) lb.addEventListener("click", () => {
       const n = state.actualRaw.split("\n").map(x=>x.trim()).filter(Boolean).length;
       if (!n) { toast("先寫下實際被問的問題"); return; }
-      if (!confirm(`鎖定 ${n} 題？鎖定後不能再改，這是「沒有事後修改記憶」的證明。`)) return;
+      if (!confirm(`鎖定 ${n} 題？鎖定後不能再改，這樣才知道自己是真的記得，不是看了答案之後才想起來的。`)) return;
       state.actualLocked = true;
       state.actualLockedAt = new Date().toLocaleString("zh-TW", { hour12: false });
       saveState();
       toast("🔒 已鎖定");
       render();
+    });
+    const uma = document.getElementById("useMockActual");
+    if (uma) uma.addEventListener("click", () => {
+      state.actualRaw = INTERVIEW_DEMO.actualQuestions.join("\n");
+      saveState();
+      toast("已帶入示意資料");
+      render();
+    });
+    const umg = document.getElementById("useMockGapHits");
+    if (umg) umg.addEventListener("click", () => {
+      INTERVIEW_DEMO.gapHits.forEach((g, i) => { state.gapHitAnswers["g" + (i + 1)] = g.status; });
+      saveState();
+      toast("已帶入示意資料");
+      render();
+    });
+    screen.querySelectorAll("select[data-gaphit]").forEach((sel) => {
+      sel.addEventListener("change", () => {
+        state.gapHitAnswers[sel.dataset.gaphit] = sel.value;
+        saveState();
+      });
     });
     screen.querySelectorAll("input[data-pf]").forEach((cb) => {
       cb.addEventListener("change", () => {
@@ -1097,6 +1241,13 @@ function wireTab() {
       inp.addEventListener("input", () => {
         const id = inp.dataset.note;
         state.prepAdopt[id] = Object.assign({}, state.prepAdopt[id], { note: inp.value });
+        saveState();
+      });
+    });
+    screen.querySelectorAll("select[data-usefulness]").forEach((sel) => {
+      sel.addEventListener("change", () => {
+        const id = sel.dataset.usefulness;
+        state.prepAdopt[id] = Object.assign({}, state.prepAdopt[id], { usefulness: sel.value });
         saveState();
       });
     });
@@ -1168,4 +1319,18 @@ function wireTab() {
   }
 }
 
-render();
+function checkValidationHash() {
+  if (location.hash === "#validation" && state.onboarded) {
+    state.tab = "validation";
+    render();
+  }
+}
+window.addEventListener("hashchange", checkValidationHash);
+
+loadData()
+  .then(() => { render(); checkValidationHash(); })
+  .catch((e) => {
+    document.getElementById("screen").innerHTML =
+      `<div class="view"><div class="card"><h3>資料載入失敗</h3><div class="sub">${e.message}</div></div></div>`;
+    console.error(e);
+  });

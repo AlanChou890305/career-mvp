@@ -15,7 +15,7 @@ A/B/C 基準線與真實面試閉環，不在介面。
 |---|---|---|
 | `app.js` | 570 | onboarding 流程、狀態管理、CRUD、localStorage |
 | `data.js` | 505 | 16 位 persona（10 真實語料 + 6 假資料）、種子投遞紀錄與履歷版本 |
-| `heuristics.js` | 101 | 本機規則引擎，讀輸入的履歷/JD 產生追問 |
+| `heuristics.js` | 101 | 本機規則引擎，讀輸入的履歷/JD 產生追問。來自 Sunny 的架構，這輪未使用——追問內容改由 `demo-data.json` 提供，檔案留著沒有刪 |
 | `index.html` | 30 | 進入點 |
 | `styles.css` | 151 | 樣式 |
 
