@@ -327,6 +327,15 @@ N16 進階問題的門檻用**命中題數 ÷ 面試官實際題數**計算，
 
 這些做法的成本跟寫死幾乎一樣，差別只在現在決定或之後重寫。
 
+### 這輪實際兌現的狀態（2026-08-23 補記）
+
+上面的接口原本是計畫，`alan/webapp/` 這輪的實作把它們兌現成了現況，記在這裡供第二輪對照：
+
+- `demo-data.json` 已存在（`alan/webapp/demo-data.json`，在 `.gitignore` 裡，跟 `alan-data.js` 同待遇），app 改成 `fetch` 這份 JSON，不再從 `alan-data.js` 的常數載入。另有 `demo-data.example.json` commit 進 repo，結構完整、內容全遮蔽，同時是資料結構文件與換受試者的模板。
+- app 這輪的角色是**純展示載體**：驗證資料（面試官實際問了什麼、建議做了沒／用上了沒）由人在 markdown 檔手動產生並 commit，時間戳由 git 提供，app 不接受即時輸入去驗證那兩件事——這是刻意的，理由見〈這一跑的定位〉。
+- 面試窗口（2026-08-24 至 09-05）在寫這段時還沒發生，所以步驟 7、8（面試後回饋、缺口診斷命中）app 裡放的是**示意資料**（`demo-data.json` 的 `interviewDemo` 區塊，`isMock: true`），欄位結構跟真資料完全同構。面試後只要把 `interviewDemo` 換成真實內容、把 `isMock` 拿掉，不用改程式。
+- Artifact 發布需要先過打包步驟（`alan/webapp/build.sh`）：Artifact 只能吃單檔，且 CSP 只放行 Google Fonts，原本從 jsdelivr 載的 framework7-icons 會變空白框，打包階段換成內嵌 SVG；同時遮蔽規則從「渲染時替換」搬到「寫入 dist 之前」，發布檔裡不能留原文。目前只產出 `dist/index.html`，還沒實際發布成 Artifact——公司名要不要具名尚未決定，見〈資料使用〉。
+
 ---
 
 ## 待解問題
