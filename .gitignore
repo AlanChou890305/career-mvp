@@ -33,3 +33,8 @@ __pycache__/
 *.log
 tmp/
 .gstack/
+
+# 個人資料：真實履歷、投遞 JD、AI 產出的個人分析結果，不進 repo
+alan/private/
+alan/webapp/alan-data.js
+alan/webapp/demo-data.json
