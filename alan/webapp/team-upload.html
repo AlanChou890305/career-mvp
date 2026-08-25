@@ -56,7 +56,8 @@
   <h1>團隊資料上傳</h1>
   <p class="sub">
     career-mvp 三人分支共用的一個小資料收集頁——貼上自己的履歷與一份 JD，存起來給對照分析用。
-    不需要登入，資料存在共用的 Supabase 專案裡，組員彼此看得到。這裡不做 AI 分析，只負責收資料。
+    不需要登入，資料存在共用的 Supabase 專案裡，組員彼此看得到。上傳後會自動跑一輪「追問」，
+    目前是本機規則版（關鍵字/正規表達式比對，不呼叫任何 LLM），還沒接 Claude API——之後接上不用改前端。
   </p>
 
   <div class="card">
@@ -129,7 +130,7 @@ function fmtTime(iso) {
 let openId = null;
 
 function followupStatusHtml(r) {
-  if (r.followups_status === "pending") return `<div class="fu-status pending">⏳ AI 追問生成中…</div>`;
+  if (r.followups_status === "pending") return `<div class="fu-status pending">⏳ 追問生成中…（本機規則版，非 AI）</div>`;
   if (r.followups_status === "error") return `
     <div class="fu-status err">追問生成失敗：${escapeHtml(r.followups_error || "")}</div>
     <button class="linklike fu-retry" data-genfu="${r.id}" type="button">重試 →</button>`;
@@ -142,7 +143,7 @@ function followupStatusHtml(r) {
         ${f.why ? `<div class="fu-why">為什麼問這題：${escapeHtml(f.why)}</div>` : ""}
       </div>`).join("")}</div>`;
   }
-  return `<button class="linklike fu-retry" data-genfu="${r.id}" type="button">🤖 產生 AI 追問 →</button>`;
+  return `<button class="linklike fu-retry" data-genfu="${r.id}" type="button">🔎 產生追問（本機規則版）→</button>`;
 }
 
 async function generateFollowups(id) {
@@ -234,7 +235,7 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
       headers: { "Prefer": "return=representation" },
       body: JSON.stringify({ member, label, resume_text: resume, jd_text: jd, notes }),
     });
-    status.textContent = "已上傳，AI 追問生成中…"; status.className = "status ok";
+    status.textContent = "已上傳，追問生成中…（本機規則版，非 AI）"; status.className = "status ok";
     document.getElementById("labelIn").value = "";
     document.getElementById("resumeIn").value = "";
     document.getElementById("jdIn").value = "";
