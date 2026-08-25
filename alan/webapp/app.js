@@ -691,7 +691,7 @@ function renderResume() {
         <input class="field" id="resLabel" placeholder="版本名稱（例：主力版、產品經理版）" value="${state.draftLabel || ""}">
         <textarea class="field" id="resText" placeholder="貼上履歷全文，或先上傳 PDF">${state.draftText || ""}</textarea>
         <button class="btn block" id="addResBtn" style="margin-top:10px">＋ 新增履歷</button>
-        <button class="linklike" id="useMyResume" type="button">帶入示範履歷 →</button>`}
+        ${ALAN ? `<button class="linklike" id="useMyResume" type="button">帶入示範履歷 →</button>` : ""}`}
       </div>
     </div>`;
 }
@@ -1300,9 +1300,19 @@ function render() {
     return;
   }
 
-  screen.innerHTML = state.demoMask ? maskText(RENDERERS[state.tab]()) : RENDERERS[state.tab]();
+  let renderFailed = false;
+  try {
+    screen.innerHTML = state.demoMask ? maskText(RENDERERS[state.tab]()) : RENDERERS[state.tab]();
+  } catch (e) {
+    renderFailed = true;
+    console.warn(`渲染「${state.tab}」失敗，通常是示範資料（demo-data.json）沒載入：`, e);
+    screen.innerHTML = `<div class="view"><div class="card">
+      <h3>這個畫面需要示範資料</h3>
+      <div class="sub">${!ALAN ? "demo-data.json 沒載入——這是 Alan 個人的示範內容，正式部署刻意不含個資，所以這一頁在公開網址上看不到。" : "畫面渲染時發生錯誤：" + e.message}</div>
+    </div></div>`;
+  }
   screen.scrollTop = changedView ? 0 : prevScroll;
-  wireTab();
+  if (!renderFailed) wireTab();
 }
 
 function wireTab() {
@@ -1684,10 +1694,13 @@ function checkValidationHash() {
 }
 window.addEventListener("hashchange", checkValidationHash);
 
+// 先渲染畫面（身分選擇／onboarding／履歷分頁都不需要 ALAN 示範資料），
+// demo-data.json 是 Alan 的真實個資，正式網址上刻意不部署（見 .gitignore），
+// 所以這裡失敗是預期狀況，不該擋住整支 app——只有依賴 ALAN/ALAN_JOB 的畫面
+// （主頁／職缺／追問／面試後）在沒資料時各自顯示提示，見 RENDERERS 呼叫處的 try/catch。
+render();
 loadData()
   .then(() => { render(); checkValidationHash(); })
   .catch((e) => {
-    document.getElementById("screen").innerHTML =
-      `<div class="view"><div class="card"><h3>資料載入失敗</h3><div class="sub">${e.message}</div></div></div>`;
-    console.error(e);
+    console.warn("demo-data.json 讀不到（正式網址上是預期行為，個資不進版控）：", e.message);
   });
