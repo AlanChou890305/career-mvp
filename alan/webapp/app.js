@@ -89,12 +89,17 @@ function defaultState() {
     resume: "",
     resumes: [],          // 最多 3 份，選填
     openResume: null,
+    showFitMore: false,
     demoMask: true,
     afterAppId: null,      // 示範模式：畫面上遮蔽個資與公司名
     draftLabel: "",
     draftText: "",
     jd: "",
     followupAnswers: {},   // AI 追問的回答：{f1:"..."}
+    jdAnalyses: [],    // 存起來的職缺分析紀錄：{id, jd, company, position, score, followupCount, createdAt}
+    viewingAnalysisId: null,
+    jobFlowActive: false,  // 是否已進入「貼 JD →追問→分析」流程；false 時顯示職缺列表頁
+    currentJdId: null,     // 目前這份 JD 分析在 jdAnalyses 裡對應的 id，一旦有分數就自動存檔更新
     applications: [],
     resumeVersions: [],
     recAdoption: {},
@@ -203,9 +208,9 @@ function renderOnboardingBasics() {
     return obShell(0, "你現在找工作的積極程度？",
       "這一題決定我們多常提醒你、以及行動建議要排得多密——比「在職／求職中」更能反映真實情況。",
       `<div>${BASIC_OPTIONS.openness.map(o => `
-        <button class="tcard ${b.openness === o.v ? "tgt" : ""}" data-obkey="openness" data-obval="${o.v}" data-multi="0"
+        <button class="optcard ${b.openness === o.v ? "sel" : ""}" data-obkey="openness" data-obval="${o.v}" data-multi="0"
           style="width:100%;text-align:left;cursor:pointer;font-family:inherit;display:block">
-          <div class="th" style="margin:0 0 3px;font-size:var(--fs-body);color:${b.openness === o.v ? "var(--teal-d)" : "var(--ink)"}">
+          <div class="th" style="margin:0 0 3px;font-size:var(--fs-body);color:${b.openness === o.v ? "var(--accent-d)" : "var(--ink)"}">
             ${b.openness === o.v ? "◉" : "○"} ${o.v}</div>
           <div class="sub" style="margin:0 0 0 20px">${o.d}</div>
         </button>`).join("")}</div>`);
@@ -236,14 +241,14 @@ function renderOnboardingBasics() {
       ${BASIC_OPTIONS.jobCats.map(c => `<option ${val === c ? "selected" : ""}>${c}</option>`).join("")}</select>`;
     return obShell(3, "你現在的位置，和想去的位置",
       "104 明確指出「希望職稱＋希望職類」是企業搜尋比對最關鍵的兩個欄位，所以分開問。目標那張是必填。",
-      `<div class="tcard now">
+      `<div class="optcard">
          <div class="th">◦ 現在</div>
          <label class="fl">職稱</label><input id="obCurTitle" placeholder="例：產品經理" value="${b.curTitle}">
          <label class="fl">職類</label>${cats("obCurCat", b.curCat)}
        </div>
        <div class="arrowmid">↓</div>
-       <div class="tcard tgt">
-         <div class="th">◎ 想去</div>
+       <div class="optcard sel">
+         <div class="th" style="color:var(--accent-d)">◎ 想去</div>
          <label class="fl">目標職稱　<span style="color:var(--red)">必填</span></label>
          <input id="obTgtTitle" placeholder="例：Technical Program Manager" value="${b.tgtTitle}">
          <label class="fl">目標職類</label>${cats("obTgtCat", b.tgtCat)}
@@ -256,6 +261,70 @@ function renderOnboardingBasics() {
     `<div class="bigchips">${BASIC_OPTIONS.industries.map(it => `
        <button class="bigchip ${on.includes(it) ? "on" : ""}" data-obkey="industries" data-obval="${it}" data-multi="1">${it}</button>`).join("")}</div>
      <div class="selcount">已選 ${on.length} 項${on.length ? "" : "　至少選 1 項"}</div>`);
+}
+
+function renderEditBasics() {
+  const b = state.basics;
+  const cats = (id, val) => `<select id="${id}">
+    <option value="">選擇職類…</option>
+    ${BASIC_OPTIONS.jobCats.map(c => `<option ${val === c ? "selected" : ""}>${c}</option>`).join("")}</select>`;
+
+  return `
+    <div class="view">
+      <button class="backlink" id="backFromEditBasics">← 回到主頁</button>
+      <div class="h1">編輯基本資料</div>
+      <p class="sub">Basic 5 題，改完直接回主頁，不用重新跑一次流程。</p>
+
+      <div class="card">
+        <h3>積極程度</h3>
+        <div>${BASIC_OPTIONS.openness.map(o => `
+          <button class="optcard ${b.openness === o.v ? "sel" : ""}" data-obkey="openness" data-obval="${o.v}" data-multi="0"
+            style="width:100%;text-align:left;cursor:pointer;font-family:inherit;display:block">
+            <div class="th" style="margin:0 0 3px;font-size:var(--fs-body);color:${b.openness === o.v ? "var(--accent-d)" : "var(--ink)"}">
+              ${b.openness === o.v ? "◉" : "○"} ${o.v}</div>
+            <div class="sub" style="margin:0 0 0 20px">${o.d}</div>
+          </button>`).join("")}</div>
+      </div>
+
+      <div class="card">
+        <h3>職涯目標</h3>
+        <textarea class="bigta" id="obGoal" placeholder="想到什麼寫什麼…">${b.goal}</textarea>
+      </div>
+
+      <div class="card">
+        <h3>擅長的技能與工具</h3>
+        ${BASIC_OPTIONS.skillGroups.map(gr => `
+          <div class="grp">${gr.g}</div>
+          <div class="bigchips">${gr.items.map(it => `
+            <button class="bigchip ${b.skills.includes(it) ? "on" : ""}" data-obkey="skills" data-obval="${it}" data-multi="1">${it}</button>`).join("")}</div>`).join("")}
+        <div class="selcount">已選 ${b.skills.length} 項</div>
+      </div>
+
+      <div class="card">
+        <h3>現在的位置，和想去的位置</h3>
+        <div class="optcard">
+          <div class="th">◦ 現在</div>
+          <label class="fl">職稱</label><input id="obCurTitle" placeholder="例：產品經理" value="${b.curTitle}">
+          <label class="fl">職類</label>${cats("obCurCat", b.curCat)}
+        </div>
+        <div class="arrowmid">↓</div>
+        <div class="optcard sel">
+          <div class="th" style="color:var(--accent-d)">◎ 想去</div>
+          <label class="fl">目標職稱　<span style="color:var(--red)">必填</span></label>
+          <input id="obTgtTitle" placeholder="例：Technical Program Manager" value="${b.tgtTitle}">
+          <label class="fl">目標職類</label>${cats("obTgtCat", b.tgtCat)}
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>想待的產業領域</h3>
+        <div class="bigchips">${BASIC_OPTIONS.industries.map(it => `
+          <button class="bigchip ${b.industries.includes(it) ? "on" : ""}" data-obkey="industries" data-obval="${it}" data-multi="1">${it}</button>`).join("")}</div>
+        <div class="selcount">已選 ${b.industries.length} 項</div>
+      </div>
+
+      <button class="btn block" id="doneEditBasics">完成編輯 →</button>
+    </div>`;
 }
 
 function wireOnboarding() {
@@ -337,6 +406,31 @@ function computeStats() {
 }
 
 function lv(x){ return x==="強"?100:x==="中"?60:30 }
+function jdMatchScore(J){
+  const strong = J.fitStrong.length, weak = J.fitWeak.length, miss = J.fitMiss.length;
+  const total = strong + weak + miss;
+  if (!total) return 0;
+  return Math.round(100 * (strong * 1 + weak * 0.4) / total);
+}
+function upsertCurrentJdAnalysis() {
+  if (!state.jd.trim()) return;
+  if (!state.currentJdId) state.currentJdId = "jd" + Date.now();
+  const prev = state.jdAnalyses.find(x => x.id === state.currentJdId);
+  const rec = {
+    id: state.currentJdId,
+    jd: state.jd,
+    company: ALAN_JOB.company,
+    position: ALAN_JOB.position,
+    score: unlocked("jdMatch") ? jdMatchScore(ALAN_JOB) : null,
+    followupCount: answeredFollowupIds().length,
+    createdAtTs: prev ? prev.createdAtTs : Date.now(),
+    createdAt: prev ? prev.createdAt : new Date().toLocaleString("zh-TW", { hour12: false }),
+  };
+  const idx = state.jdAnalyses.findIndex(x => x.id === state.currentJdId);
+  if (idx >= 0) state.jdAnalyses[idx] = rec; else state.jdAnalyses.push(rec);
+  saveState();
+}
+
 function planDone(id){ return !!(state.planAdopt[id]||{}).done }
 function unlocked(id){
   if (id==="fitAdvice") return state.resumes.length > 0;
@@ -389,7 +483,10 @@ function renderHome() {
             <div class="h1" style="margin:2px 0 0">${b.openness || "—"}</div>
             <div class="sub" style="margin:4px 0 0">${b.curTitle || "—"} → <b>${b.tgtTitle || "—"}</b></div>
           </div>
-          <div class="ring" style="--pct:${pct}"><div class="hole">${pct}<small>%</small></div></div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+            <button class="iconbtn" id="editBasicsBtn" title="編輯基本資料">✏️</button>
+            <div class="ring" style="--pct:${pct}"><div class="hole">${pct}<small>%</small></div></div>
+          </div>
         </div>
         <div class="sub" style="margin:12px 0 0">進階模組解鎖進度：${3-need.length}/3</div>
       </div>
@@ -413,10 +510,32 @@ function renderHome() {
 
       <div class="card">
         <h3>工作類型</h3>
-        <div class="tri"><span class="tl2">理想</span><div>${D.ideal.map(x=>`<span class="pill ok">${x}</span>`).join("")}</div></div>
-        <div class="tri"><span class="tl2">目標</span><div>${D.target.map(x=>`<span class="pill mid">${x}</span>`).join("")}</div></div>
-        <div class="tri"><span class="tl2">可接受</span><div>${D.accept.map(x=>`<span class="pill">${x}</span>`).join("")}</div></div>
+        <div class="tri"><span class="tl2">理想</span><div>${D.ideal.map(x=>`<span class="pill pill-lg ok">${x}</span>`).join("")}</div></div>
+        <div class="tri"><span class="tl2">目標</span><div>${D.target.map(x=>`<span class="pill pill-lg mid">${x}</span>`).join("")}</div></div>
+        <div class="tri"><span class="tl2">可接受</span><div>${D.accept.map(x=>`<span class="pill pill-lg">${x}</span>`).join("")}</div></div>
       </div>
+
+      ${unlocked("fitAdvice") ? `
+      <div class="card">
+        <div class="row between"><h3 style="margin:0">適配職缺方向建議</h3><span class="chip chip-real">已解鎖</span></div>
+        ${ALAN.directions.map((d,i)=>`<div class="dir dir-compact">
+          <div class="dn"><span class="idx">${i+1}</span>${d.t}</div>
+          <div class="dsub">${d.sub}</div>
+          <div class="kw">${d.kw}</div>
+          <div class="sub"><b>為什麼是你</b>　${d.why}</div>
+          <div class="sub"><b>最缺的一塊</b>　${d.miss}</div>
+        </div>`).join("")}
+        <button class="linklike" id="toggleFitMore" type="button" style="margin-top:2px">${state.showFitMore ? "收合資產與短板 ↑" : "看你可能沒發現的資產與短板 →"}</button>
+        ${state.showFitMore ? `
+        <h3 style="margin-top:14px">你可能沒發現的資產</h3>
+        ${ALAN.assets.map(a=>`<div class="ast"><div class="cn">${a.t}</div><div class="sub">${a.d}</div></div>`).join("")}
+        <h3 style="margin-top:14px">短板</h3>
+        ${ALAN.gaps.map(g=>`<div class="ast">
+          <div class="row between"><span class="cn">${g.t}</span><span class="tg ${g.fix==="補得起來"?"tg-fix":"tg-avoid"}">${g.fix}</span></div>
+          <div class="sub">${g.d}</div></div>`).join("")}
+        ` : ``}
+      </div>
+      ` : lockCard(LOCKS[0])}
 
       <div class="card">
         <h3>技能能力方向</h3>
@@ -428,47 +547,13 @@ function renderHome() {
             <div class="bar"><i style="width:${lv(c.level)}%" class="b-${c.level}"></i></div>
           </div>`).join("")}
       </div>
-
-      ${unlocked("fitAdvice") ? `
-      <div class="card">
-        <div class="row between"><h3 style="margin:0">適配職缺方向建議</h3><span class="chip chip-real">已解鎖</span></div>
-        ${ALAN.directions.map((d,i)=>`<div class="dir">
-          <div class="dn"><span class="idx">${i+1}</span>${d.t}</div>
-          <div class="dsub">${d.sub}</div>
-          <div class="kw">${d.kw}</div>
-          <div class="sub"><b>為什麼是你</b>　${d.why}</div>
-          <div class="sub"><b>最缺的一塊</b>　${d.miss}</div>
-        </div>`).join("")}
-        <h3 style="margin-top:14px">你可能沒發現的資產</h3>
-        ${ALAN.assets.map(a=>`<div class="ast"><div class="cn">${a.t}</div><div class="sub">${a.d}</div></div>`).join("")}
-        <h3 style="margin-top:14px">短板</h3>
-        ${ALAN.gaps.map(g=>`<div class="ast">
-          <div class="row between"><span class="cn">${g.t}</span><span class="tg ${g.fix==="補得起來"?"tg-fix":"tg-avoid"}">${g.fix}</span></div>
-          <div class="sub">${g.d}</div></div>`).join("")}
-      </div>
-
-      <div class="card">
-        <div class="row between"><h3 style="margin:0">履歷調整方向</h3><span class="chip chip-live">週～月</span></div>
-        <div class="sub">結果要下一次投遞才看得到——這是需要一直回來更新的那一種。</div>
-        ${ALAN.plan.map(p=>{const on=planDone(p.id);return `
-          <div class="rec ${on?"on":""}">
-            <label class="rh"><input type="checkbox" data-plan="${p.id}" ${on?"checked":""}>
-              <span class="rt">${p.t}</span></label>
-            <div class="rm"><span class="chip">⏱ ${p.time}</span></div>
-            <div class="sub"><b>完成條件</b>　${p.done}</div>
-            <div class="sub"><b>補的是</b>　${p.fix}</div>
-            <div class="sub warnl"><b>不做的話</b>　${p.skip}</div>
-          </div>`}).join("")}
-        <h3 style="margin-top:14px">這些建議沒有涵蓋的</h3>
-        ${ALAN.planUncovered.map(x=>`<div class="sub" style="margin-bottom:8px">${x}</div>`).join("")}
-      </div>` : lockCard(LOCKS[0])}
     </div>`;
 }
 
 const MAX_RESUMES = 3;
 
 function renderResume() {
-  const b = state.basics, rs = state.resumes, full = rs.length >= MAX_RESUMES;
+  const rs = state.resumes, full = rs.length >= MAX_RESUMES;
   const cards = rs.map((r, i) => `
     <div class="rcard ${r.primary ? "pri" : ""}">
       <div class="row between">
@@ -488,17 +573,6 @@ function renderResume() {
     <div class="view">
       <div class="h1">履歷</div>
       <p class="sub">選填，最多 ${MAX_RESUMES} 份。放不同版本可以在投遞時分開記錄，之後就看得出哪一版比較有回應。</p>
-
-      <div class="card">
-        <div class="row between"><h3 style="margin:0">Basic 5 題</h3>
-          <button class="iconbtn" id="editBasicsBtn">✏️ 編輯</button></div>
-        <div class="brow"><span>積極程度</span><b>${b.openness || "—"}</b></div>
-        <div class="brow"><span>目前</span><b>${b.curTitle || "—"}${b.curCat ? " · " + b.curCat : ""}</b></div>
-        <div class="brow"><span>目標</span><b>${b.tgtTitle || "—"}${b.tgtCat ? " · " + b.tgtCat : ""}</b></div>
-        <div class="brow"><span>技能</span><b>${b.skills.join("、") || "—"}</b></div>
-        <div class="brow"><span>產業</span><b>${b.industries.join("、") || "—"}</b></div>
-        <div class="brow"><span>職涯目標</span><b style="font-weight:500">${b.goal || "—"}</b></div>
-      </div>
 
       <div class="card">
         <div class="row between">
@@ -532,12 +606,89 @@ function renderResume() {
 
 function prepSt(id){ return state.prepAdopt[id]||{} }
 
+function renderJdList() {
+  const items = state.jdAnalyses.filter(x => x.id !== state.currentJdId).sort((a, b) => b.createdAtTs - a.createdAtTs);
+  if (!items.length) return "";
+  return `<div class="card">
+    <h3>歷史分析紀錄</h3>
+    <div class="sub">存過的每一次分析，點卡片回顧當時的 JD 全文與分數。</div>
+    ${items.map(r => `
+      <div class="rec">
+        <div class="row between" data-viewjd="${r.id}" style="cursor:pointer">
+          <span class="rt">${r.company} · ${r.position}</span>
+          <span class="chip chip-real">${r.score} 分</span>
+        </div>
+        <div class="sub" data-viewjd="${r.id}" style="cursor:pointer">${r.createdAt}　已答 ${r.followupCount} 題追問</div>
+        <button class="linklike" data-delanalysis="${r.id}" type="button" style="margin-top:4px">刪除這筆</button>
+      </div>`).join("")}
+  </div>`;
+}
+
+function renderJdListingPage() {
+  const items = state.jdAnalyses.slice().sort((a, b) => b.createdAtTs - a.createdAtTs);
+  return `
+    <div class="view">
+      <div class="h1">職缺匹配度分析</div>
+      <p class="sub">貼上一份 JD，AI 先指出落差、追問幾個問題，回答之後才會給匹配分數與面試前準備。每次分析都會存成一筆紀錄——點下面的紀錄可以繼續填答，或回顧存檔當時的內容。</p>
+      <div class="card">
+        <button class="btn block" id="startJdAnalysis">開始新的分析 →</button>
+      </div>
+      <div class="card">
+        <h3>分析紀錄</h3>
+        ${items.length ? `
+        <div class="sub">共 ${items.length} 筆。點卡片繼續填答（進行中）或回顧存檔內容（已完成）。</div>
+        ${items.map(r => {
+          const isCurrent = r.id === state.currentJdId;
+          const scoreChip = r.score === null
+            ? `<span class="chip chip-mock">進行中</span>`
+            : `<span class="chip chip-real">${r.score} 分</span>`;
+          return `
+          <div class="rec">
+            <div class="row between" data-viewjd="${r.id}" style="cursor:pointer;gap:8px">
+              <span class="rt">${r.company} · ${r.position}</span>
+              <div style="display:flex;align-items:center;gap:4px;flex:none">
+                ${scoreChip}
+                <button class="iconbtn" data-delanalysis="${r.id}" type="button" title="刪除這筆">🗑</button>
+              </div>
+            </div>
+            <div class="sub" data-viewjd="${r.id}" style="cursor:pointer;margin:0">${r.createdAt}　已答 ${r.followupCount} 題追問${isCurrent ? "　· 目前這筆" : ""}</div>
+          </div>`;
+        }).join("")}
+        ` : `<div class="emptybox"><div class="ei">🔎</div><div class="et">還沒有分析紀錄</div><div class="sub" style="margin:4px 0 0">點上面的按鈕開始第一筆。</div></div>`}
+      </div>
+    </div>`;
+}
+
+function renderAnalysisView(r) {
+  return `<div class="view">
+    <button class="backlink" id="backFromAnalysisView">← 回到職缺</button>
+    <div class="h1">${r.company} · ${r.position}</div>
+    <div class="card">
+      <div class="row between"><h3 style="margin:0">JD 匹配分數（存檔時）</h3><span class="chip chip-real">${r.score}</span></div>
+      <div class="sub">存於 ${r.createdAt}，當時已答 ${r.followupCount} 題追問。這個分數是存檔當下凍結的，之後在「職缺」分頁的操作不會改到它。</div>
+    </div>
+    <div class="card">
+      <h3>當時貼的 JD 全文</h3>
+      <textarea disabled style="min-height:160px">${r.jd}</textarea>
+    </div>
+  </div>`;
+}
+
 function renderJob() {
   const J = ALAN_JOB;
+
+  if (state.viewingAnalysisId) {
+    const r = state.jdAnalyses.find(x => x.id === state.viewingAnalysisId);
+    if (r) return renderAnalysisView(r);
+    state.viewingAnalysisId = null;
+  }
+
+  if (!state.jobFlowActive) return renderJdListingPage();
 
   if (!unlocked("jdHasFollowups")) {
     return `
     <div class="view">
+      <button class="backlink" id="backFromJobFlow">← 回到分析紀錄列表</button>
       <div class="h1">這份職缺</div>
       <p class="sub">貼上一份 JD，AI 會先指出落差、追問幾個問題，回答之後才會給匹配分數與面試前準備。</p>
       <div class="card">
@@ -545,29 +696,40 @@ function renderJob() {
         <textarea id="jdInput" placeholder="貼上職缺描述…">${state.jd}</textarea>
         <button class="linklike" id="useMyJd" type="button">帶入示範資料 →</button>
       </div>
+      ${renderJdList()}
     </div>`;
   }
 
   if (!unlocked("jdMatch")) {
     return `
     <div class="view">
+      <button class="backlink" id="backFromJobFlow">← 回到分析紀錄列表</button>
       <div class="h1">這份職缺</div>
       <div class="card">
         <div class="row between"><h3 style="margin:0">JD 已收到</h3><span class="chip chip-live">${J.company} · ${J.position}</span></div>
         <div class="sub">在給你匹配分數之前，AI 先指出幾個落差、想追問幾個問題——回答至少 1 題之後才會顯示匹配分數與面試前準備。</div>
         <button class="btn block" data-goto="questions" style="margin-top:10px">看 AI 的追問 →</button>
+        <button class="linklike" id="resetJd" type="button" style="margin-top:8px">換一份 JD，重新分析 →</button>
       </div>
       ${lockCard(LOCKS[1])}
+      ${renderJdList()}
     </div>`;
   }
   const planned = J.prep.filter(p=>prepSt(p.id).planned).length;
   return `
     <div class="view">
+      <button class="backlink" id="backFromJobFlow">← 回到分析紀錄列表</button>
       <div class="card jobhead">
         <div class="jc">${J.company}</div>
         <div class="jp">${J.position}</div>
         <div class="sub">${J.industry}</div>
         <div class="fmt">${J.format}</div>
+        <button class="linklike" id="resetJd" type="button" style="margin-top:8px">換一份新的 JD →</button>
+      </div>
+
+      <div class="card">
+        <div class="row between"><h3 style="margin:0">JD 匹配分數</h3><span class="chip chip-real">${jdMatchScore(J)}</span></div>
+        <div class="sub">算法：符合每項記 1 分、證據薄每項記 0.4 分、缺口記 0 分，除以三類項目總數。履歷調整後回這裡看分數是否上升。</div>
       </div>
 
       <div class="card">
@@ -608,6 +770,24 @@ function renderJob() {
         <h3>履歷上講不清楚的地方</h3>
         ${J.resumeGaps.map(g=>`<div class="ast"><div class="cn">${g.t}</div><div class="sub">${g.d}</div></div>`).join("")}
       </div>
+
+      ${unlocked("fitAdvice") ? `
+      <div class="card">
+        <div class="row between"><h3 style="margin:0">履歷調整方向</h3><span class="chip chip-live">週～月</span></div>
+        <div class="sub">結果要下一次投遞才看得到——這是需要一直回來更新的那一種。</div>
+        ${ALAN.plan.map(p=>{const on=planDone(p.id);return `
+          <div class="rec ${on?"on":""}">
+            <label class="rh"><input type="checkbox" data-plan="${p.id}" ${on?"checked":""}>
+              <span class="rt">${p.t}</span></label>
+            <div class="rm"><span class="chip">⏱ ${p.time}</span></div>
+            <div class="sub"><b>完成條件</b>　${p.done}</div>
+            <div class="sub"><b>補的是</b>　${p.fix}</div>
+            <div class="sub warnl"><b>不做的話</b>　${p.skip}</div>
+          </div>`}).join("")}
+        <h3 style="margin-top:14px">這些建議沒有涵蓋的</h3>
+        ${ALAN.planUncovered.map(x=>`<div class="sub" style="margin-bottom:8px">${x}</div>`).join("")}
+      </div>` : lockCard(LOCKS[0])}
+      ${renderJdList()}
     </div>`;
 }
 
@@ -616,7 +796,7 @@ function renderQuestions() {
   const answered = answeredFollowupIds();
   return `
     <div class="view">
-      <button class="linklike" id="backFromQuestions">← 回到職缺</button>
+      <button class="backlink" id="backFromQuestions">← 回到職缺</button>
       <div class="h1">AI 先搞懂你，再給建議</div>
       <p class="sub">這是整段體驗裡唯一在回答「跟把履歷貼給一般 AI 聊天工具差在哪」的畫面——它先指出資訊哪裡不夠、跟這份 JD 差在哪，再問你幾個問題。匹配分數與面試前準備要等你回答之後才會出現。</p>
 
@@ -653,7 +833,7 @@ function renderAfter() {
 
   return `
     <div class="view">
-      <button class="linklike" id="backFromAfter">← 回到投遞紀錄</button>
+      <button class="backlink" id="backFromAfter">← 回到投遞紀錄</button>
       <div class="h1">面試後回饋</div>
       <div class="sub">${app ? `${app.company} · ${app.position}　<span class="chip chip-live">${app.date || ""}</span>` : ""}</div>
       <p class="sub">順序不能顛倒：先憑記憶寫下實際被問的題並鎖定，才回「職缺」比對 AI 猜的 8 題。鎖定的時間會存下來，這樣才知道自己是真的記得，不是看了答案之後才想起來的。</p>
@@ -713,8 +893,8 @@ function renderAfter() {
               <label><input type="checkbox" data-pf="${p.id}" data-f="usedIt" ${st.usedIt ? "checked" : ""}> 面試中用上了</label>
             </div>
             <select data-usefulness="${p.id}" style="margin-top:6px">
-              <option value="">主觀有沒有幫助？（附記，不是主判準）</option>
-              ${["很有用","有點用","沒感覺","反而誤導"].map(l => `<option value="${l}" ${st.usefulness === l ? "selected" : ""}>${l}</option>`).join("")}
+              <option value="">主觀有沒有幫助？（1–5，附記，不是主判準）</option>
+              ${[1,2,3,4,5].map(n => `<option value="${n}" ${st.usefulness === String(n) ? "selected" : ""}>${n}</option>`).join("")}
             </select>
           </div>`; }).join("")}
         ${J.prep.filter(p => prepSt(p.id).planned && !prepSt(p.id).didIt).length ? `<div class="mock-note">有勾但③還沒填「做了」的，這裡不會出現——先回③填。</div>` : ""}
@@ -945,7 +1125,7 @@ function renderValidation() {
   const chips = realPersonas().map((x) => `<button class="optchip ${x.id === p.id ? "on" : ""}" data-valpersona="${x.id}">${x.label}</button>`).join("");
   return `
     <div class="view">
-      <button class="linklike" id="backFromValidation">← 回到 App</button>
+      <button class="backlink" id="backFromValidation">← 回到 App</button>
       <div class="h1">🔬 內部驗證資料</div>
       <p class="sub">這裡不是產品功能，是給 Alan／Berry 看的：3 篇真實面試心得語料，AI 追問預測 vs. 面試官實際問的問題，對照命中率。細節見 <code>../results/hit-rate-summary.md</code>。</p>
       <div class="optwrap" style="margin-bottom:12px">${chips}</div>
@@ -978,11 +1158,11 @@ function renderValidation() {
 
 // ================= Router =================
 
-const RENDERERS = { home: renderHome, resume: renderResume, job: renderJob, questions: renderQuestions, apps: renderApps, after: renderAfter, settings: renderSettings, versions: renderVersions, validation: renderValidation };
+const RENDERERS = { home: renderHome, resume: renderResume, job: renderJob, questions: renderQuestions, apps: renderApps, after: renderAfter, settings: renderSettings, versions: renderVersions, validation: renderValidation, editBasics: renderEditBasics };
 
 function renderTabbar() {
   const bar = document.getElementById("tabbar");
-  if (!state.onboarded || ["validation","after","questions"].includes(state.tab)) { bar.style.display = "none"; return; }
+  if (!state.onboarded || ["validation","after","questions","editBasics"].includes(state.tab)) { bar.style.display = "none"; return; }
   bar.style.display = "flex";
   bar.innerHTML = "";
   TABS.forEach((t) => {
@@ -1019,18 +1199,6 @@ function wireTab() {
 
   screen.querySelectorAll("[data-goto]").forEach((btn) => btn.addEventListener("click", () => { state.tab = btn.dataset.goto; render(); }));
 
-  if (state.tab === "home") {
-    screen.querySelectorAll("input[data-plan]").forEach((cb) => {
-      cb.addEventListener("change", () => {
-        const id = cb.dataset.plan;
-        state.planAdopt[id] = Object.assign({}, state.planAdopt[id], { done: cb.checked });
-        saveState();
-        cb.closest(".rec").classList.toggle("on", cb.checked);
-        if (cb.checked) toast("✅ 已完成");
-      });
-    });
-  }
-
   if (state.tab === "validation") {
     document.getElementById("backFromValidation").addEventListener("click", () => {
       history.replaceState(null, "", location.pathname + location.search);
@@ -1043,11 +1211,44 @@ function wireTab() {
     if (rb) rb.addEventListener("click", () => { state.validationRevealed = true; render(); });
   }
 
-  if (state.tab === "resume") {
+  if (state.tab === "home") {
     document.getElementById("editBasicsBtn").addEventListener("click", () => {
-      state.obReturnTo = "resume"; state.obStep = 0; state.onboarded = false; render();
+      state.tab = "editBasics"; render();
+    });
+    screen.querySelectorAll("[data-homeviewjd]").forEach((el2) => {
+      el2.addEventListener("click", () => {
+        state.viewingAnalysisId = el2.dataset.homeviewjd;
+        state.tab = "job";
+        render();
+      });
+    });
+    const fitMoreBtn = document.getElementById("toggleFitMore");
+    if (fitMoreBtn) fitMoreBtn.addEventListener("click", () => { state.showFitMore = !state.showFitMore; render(); });
+  }
+
+  if (state.tab === "editBasics") {
+    document.getElementById("backFromEditBasics").addEventListener("click", () => { state.tab = "home"; render(); });
+    document.getElementById("doneEditBasics").addEventListener("click", () => { state.tab = "home"; render(); });
+
+    screen.querySelectorAll("[data-obkey]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.dataset.obkey, val = btn.dataset.obval, multi = btn.dataset.multi === "1";
+        if (multi) toggleInArray(state.basics[key], val);
+        else state.basics[key] = state.basics[key] === val ? "" : val;
+        saveState();
+        render();
+      });
     });
 
+    const bindIn = (id, key) => {
+      const el2 = document.getElementById(id);
+      if (el2) el2.addEventListener("input", () => { state.basics[key] = el2.value; saveState(); });
+    };
+    bindIn("obGoal", "goal"); bindIn("obCurTitle", "curTitle"); bindIn("obCurCat", "curCat");
+    bindIn("obTgtTitle", "tgtTitle"); bindIn("obTgtCat", "tgtCat");
+  }
+
+  if (state.tab === "resume") {
     const lab = document.getElementById("resLabel"), txt = document.getElementById("resText");
     if (lab) lab.addEventListener("input", () => { state.draftLabel = lab.value; saveState(); });
     if (txt) txt.addEventListener("input", () => { state.draftText = txt.value; saveState(); });
@@ -1128,6 +1329,22 @@ function wireTab() {
   }
 
   if (state.tab === "job") {
+    if (!state.viewingAnalysisId) upsertCurrentJdAnalysis();
+    const bav = document.getElementById("backFromAnalysisView");
+    if (bav) { bav.addEventListener("click", () => { state.viewingAnalysisId = null; render(); }); }
+    const sja = document.getElementById("startJdAnalysis");
+    if (sja) sja.addEventListener("click", () => {
+      state.jd = "";
+      state.followupAnswers = {};
+      state.gapHitAnswers = {};
+      state.prepAdopt = {};
+      state.currentJdId = null;
+      state.jobFlowActive = true;
+      saveState();
+      render();
+    });
+    const bjf = document.getElementById("backFromJobFlow");
+    if (bjf) bjf.addEventListener("click", () => { state.jobFlowActive = false; saveState(); render(); });
     const jt = document.getElementById("jdInput");
     if (jt) { jt.addEventListener("input", () => { state.jd = jt.value; saveState(); });
               jt.addEventListener("blur", () => render()); }
@@ -1135,12 +1352,54 @@ function wireTab() {
     if (uj) uj.addEventListener("click", () => {
       state.jd = ALAN_JOB.jdText; saveState(); toast("🔓 已解鎖追問"); render();
     });
+    const rj = document.getElementById("resetJd");
+    if (rj) rj.addEventListener("click", () => {
+      const hasScore = unlocked("jdMatch");
+      state.jd = "";
+      state.followupAnswers = {};
+      state.gapHitAnswers = {};
+      state.prepAdopt = {};
+      state.currentJdId = null;
+      saveState();
+      toast(hasScore ? "已存檔，可以貼新的 JD" : "已清空，可以貼新的 JD");
+      render();
+    });
+    screen.querySelectorAll("[data-viewjd]").forEach((el2) => {
+      el2.addEventListener("click", () => {
+        const id = el2.dataset.viewjd;
+        if (id === state.currentJdId) {
+          state.jobFlowActive = true;
+          saveState();
+        } else {
+          state.viewingAnalysisId = id;
+        }
+        render();
+      });
+    });
+    screen.querySelectorAll("[data-delanalysis]").forEach((btn) => {
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (!confirm("刪除這筆分析紀錄？不能復原。")) return;
+        state.jdAnalyses = state.jdAnalyses.filter((r) => r.id !== btn.dataset.delanalysis);
+        saveState();
+        render();
+      });
+    });
     screen.querySelectorAll("input[data-prep]").forEach((cb) => {
       cb.addEventListener("change", () => {
         const id = cb.dataset.prep;
         state.prepAdopt[id] = Object.assign({}, state.prepAdopt[id], { planned: cb.checked });
         saveState();
         render();
+      });
+    });
+    screen.querySelectorAll("input[data-plan]").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        const id = cb.dataset.plan;
+        state.planAdopt[id] = Object.assign({}, state.planAdopt[id], { done: cb.checked });
+        saveState();
+        cb.closest(".rec").classList.toggle("on", cb.checked);
+        if (cb.checked) toast("✅ 已完成");
       });
     });
   }

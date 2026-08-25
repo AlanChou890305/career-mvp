@@ -329,6 +329,10 @@ code{background:var(--fill);border-radius:var(--sp-1);padding:1px var(--sp-1);
   font-size:var(--fs-body);font-weight:400;padding:var(--sp-3) 0;cursor:pointer;font-family:inherit}
 .linklike:hover{color:var(--accent-d)}
 
+.backlink{display:inline-block;width:auto;text-align:left;background:none;border:0;color:var(--accent);
+  font-size:var(--fs-body);font-weight:400;padding:0;margin-bottom:var(--sp-3);cursor:pointer;font-family:inherit}
+.backlink:hover{color:var(--accent-d)}
+
 /* ===== Alan 版新增 ===== */
 .card h3+.sub{margin-top:calc(-1 * var(--sp-1))}
 .cap{padding:var(--sp-3) 0;border-bottom:.5px solid var(--sep-o)}
@@ -359,6 +363,10 @@ code{background:var(--fill);border-radius:var(--sp-1);padding:1px var(--sp-1);
 .kw{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-cap);background:var(--fill);
   border-radius:var(--r-ctl);padding:var(--sp-2);color:var(--label2);margin-bottom:var(--sp-2)}
 .dir .sub b,.rec .sub b{color:var(--label);font-weight:600}
+.dir-compact{padding:var(--sp-2) var(--sp-3)}
+.dir-compact .dsub{margin-bottom:var(--sp-1)}
+.dir-compact .kw{margin-bottom:var(--sp-1)}
+.dir-compact .sub{margin-bottom:2px}
 
 .rec{border:0;border-left:3px solid transparent;border-radius:var(--r-ctl);padding:var(--sp-3);
   margin-bottom:var(--sp-2);background:var(--fill2);transition:background .18s}
@@ -385,6 +393,7 @@ code{background:var(--fill);border-radius:var(--sp-1);padding:1px var(--sp-1);
 .pill.ok{background:var(--green-bg);color:var(--green)}
 .pill.mid{background:var(--amber-bg);color:var(--amber)}
 .pill.bad{background:var(--red-bg);color:var(--red)}
+.pill-lg{font-size:var(--fs-body);font-weight:600;padding:var(--sp-1) var(--sp-3)}
 
 .qq{display:flex;gap:var(--sp-3);padding:var(--sp-3) 0;border-bottom:.5px solid var(--sep-o);
   font-size:var(--fs-body);line-height:1.47}
@@ -474,17 +483,15 @@ code{background:var(--fill);border-radius:var(--sp-1);padding:1px var(--sp-1);
   line-height:1.6;margin-bottom:var(--sp-2);cursor:pointer;background:var(--fill2)}
 .ex:hover{background:var(--accent-bg)}
 
-.tcard{border:0;border-radius:var(--r-card);padding:var(--sp-4);margin-bottom:var(--sp-3);background:var(--card)}
-.tcard.now{border-left:3px solid var(--label3)}
-.tcard.tgt{border-left:3px solid var(--accent)}
-.tcard .th{font-size:var(--fs-cap);font-weight:500;color:var(--label2);margin-bottom:var(--sp-3);
+.optcard{border:1.5px solid var(--sep);border-radius:var(--r-card);padding:var(--sp-4);margin-bottom:var(--sp-3);background:var(--card)}
+.optcard.sel{border-color:var(--accent);background:var(--accent-bg)}
+.optcard .th{font-size:var(--fs-cap);font-weight:500;color:var(--label2);margin-bottom:var(--sp-3);
   display:flex;align-items:center;gap:var(--sp-2)}
-.tcard.tgt .th{color:var(--accent-d)}
 .fl{display:block;font-size:var(--fs-cap);color:var(--label2);font-weight:400;margin:0 0 var(--sp-1) 2px}
-.tcard input,.tcard select{width:100%;border:0;border-radius:var(--r-ctl);padding:var(--sp-3);
+.optcard input,.optcard select{width:100%;border:0;border-radius:var(--r-ctl);padding:var(--sp-3);
   font:inherit;font-size:var(--fs-body);background:var(--fill);color:var(--label);margin-bottom:var(--sp-3)}
-.tcard input:last-of-type,.tcard select:last-of-type{margin-bottom:0}
-.tcard input:focus,.tcard select:focus{outline:0;box-shadow:0 0 0 3px var(--accent-bg)}
+.optcard input:last-of-type,.optcard select:last-of-type{margin-bottom:0}
+.optcard input:focus,.optcard select:focus{outline:0;box-shadow:0 0 0 3px var(--accent-bg)}
 .arrowmid{text-align:center;color:var(--label3);font-size:calc(17 * var(--u));margin:calc(-1 * var(--sp-1)) 0 var(--sp-2)}
 
 /* ===== 多份履歷 ===== */
