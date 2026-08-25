@@ -40,6 +40,15 @@
   .item-actions button.del { color: var(--red); }
   .empty { color: var(--sub); font-size: 13px; padding: 8px 0; }
   .toggle { color: var(--accent); font-size:12px; cursor:pointer; }
+  .fu-status { font-size: 12px; margin-top: 8px; }
+  .fu-status.pending { color: var(--sub); }
+  .fu-status.err { color: var(--red); }
+  .fu-list { margin-top: 8px; display:flex; flex-direction:column; gap:8px; }
+  .fu-card { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .fu-cat { display:inline-block; font-size:11px; font-weight:600; color: var(--accent); background:#eef2ff; border-radius:999px; padding:2px 8px; margin-bottom:6px; }
+  .fu-q { font-weight:600; font-size:13px; margin-bottom:4px; }
+  .fu-src, .fu-why { font-size:12px; color: var(--sub); margin-top:2px; }
+  .fu-retry { margin-top:6px; }
 </style>
 </head>
 <body>
@@ -119,6 +128,40 @@ function fmtTime(iso) {
 
 let openId = null;
 
+function followupStatusHtml(r) {
+  if (r.followups_status === "pending") return `<div class="fu-status pending">⏳ AI 追問生成中…</div>`;
+  if (r.followups_status === "error") return `
+    <div class="fu-status err">追問生成失敗：${escapeHtml(r.followups_error || "")}</div>
+    <button class="linklike fu-retry" data-genfu="${r.id}" type="button">重試 →</button>`;
+  if (r.followups_status === "done" && Array.isArray(r.followups) && r.followups.length) {
+    return `<div class="fu-list">${r.followups.map(f => `
+      <div class="fu-card">
+        ${f.category ? `<span class="fu-cat">${escapeHtml(f.category)}</span>` : ""}
+        <div class="fu-q">${escapeHtml(f.question || "")}</div>
+        ${f.source_phrase ? `<div class="fu-src">觸發句：「${escapeHtml(f.source_phrase)}」</div>` : ""}
+        ${f.why ? `<div class="fu-why">為什麼問這題：${escapeHtml(f.why)}</div>` : ""}
+      </div>`).join("")}</div>`;
+  }
+  return `<button class="linklike fu-retry" data-genfu="${r.id}" type="button">🤖 產生 AI 追問 →</button>`;
+}
+
+async function generateFollowups(id) {
+  await sb(`submissions?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ followups_status: "pending" }) });
+  loadList();
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/generate-followups`, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ submission_id: id }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || `HTTP ${res.status}`);
+  } catch (e) {
+    console.error(e);
+  } finally {
+    loadList();
+  }
+}
+
 async function loadList() {
   const host = document.getElementById("listHost");
   try {
@@ -136,6 +179,7 @@ async function loadList() {
           <button data-toggle="${r.id}">${openId === r.id ? "收合" : "展開全文"}</button>
           <button class="del" data-del="${r.id}">刪除</button>
         </div>
+        ${followupStatusHtml(r)}
       </div>
     `).join("");
     host.querySelectorAll("[data-toggle]").forEach(b => b.addEventListener("click", () => {
@@ -147,6 +191,8 @@ async function loadList() {
       await sb(`submissions?id=eq.${b.dataset.del}`, { method: "DELETE" });
       loadList();
     }));
+    host.querySelectorAll("[data-genfu]").forEach(b => b.addEventListener("click", () => generateFollowups(b.dataset.genfu)));
+    if (rows.some(r => r.followups_status === "pending")) setTimeout(loadList, 2500);
   } catch (e) {
     host.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(e.message)}</div>`;
   }
@@ -183,17 +229,18 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
 
   btn.disabled = true; status.textContent = "上傳中…"; status.className = "status";
   try {
-    await sb("submissions", {
+    const [created] = await sb("submissions", {
       method: "POST",
-      headers: { "Prefer": "return=minimal" },
+      headers: { "Prefer": "return=representation" },
       body: JSON.stringify({ member, label, resume_text: resume, jd_text: jd, notes }),
     });
-    status.textContent = "已上傳"; status.className = "status ok";
+    status.textContent = "已上傳，AI 追問生成中…"; status.className = "status ok";
     document.getElementById("labelIn").value = "";
     document.getElementById("resumeIn").value = "";
     document.getElementById("jdIn").value = "";
     document.getElementById("notesIn").value = "";
     loadList();
+    if (created?.id) generateFollowups(created.id);
   } catch (e) {
     status.textContent = `上傳失敗：${e.message}`; status.className = "status err";
   } finally {
