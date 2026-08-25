@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>career-mvp 團隊資料上傳</title>
+<style>
+  :root { --ink:#1c1c1e; --sub:#6b6b70; --line:#e5e5ea; --accent:#3a6ff7; --bg:#f7f7f9; --card:#fff; --red:#e0453c; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--sub); font-size: 13px; line-height: 1.6; margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+  label { display:block; font-size: 13px; font-weight: 600; margin: 12px 0 6px; }
+  label:first-child { margin-top: 0; }
+  input, select, textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    font-size: 14px; font-family: inherit; background: #fff; color: var(--ink);
+  }
+  textarea { min-height: 110px; resize: vertical; }
+  .row { display:flex; gap: 10px; }
+  .row > * { flex:1; }
+  button.btn { width:100%; margin-top:16px; padding:12px; border:none; border-radius:10px;
+    background: var(--accent); color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
+  button.btn:disabled { opacity:.5; cursor:default; }
+  button.linklike { background:none; border:none; color:var(--accent); font-size:13px; cursor:pointer; padding:4px 0; }
+  .status { font-size: 13px; margin-top: 8px; min-height: 18px; }
+  .status.err { color: var(--red); }
+  .status.ok { color: #2c9a4a; }
+  .item { border-top: 1px solid var(--line); padding: 12px 0; }
+  .item:first-child { border-top: none; }
+  .item-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .item-who { font-weight:600; }
+  .item-when { color: var(--sub); font-size: 12px; white-space:nowrap; }
+  .item-label { color: var(--accent); font-size: 12px; margin: 2px 0 6px; }
+  .item-prev { color: var(--sub); font-size: 13px; line-height:1.5; white-space:pre-wrap; }
+  .item-actions { margin-top: 6px; display:flex; gap:12px; }
+  .item-actions button { background:none; border:none; color: var(--sub); font-size:12px; cursor:pointer; padding:0; }
+  .item-actions button.del { color: var(--red); }
+  .empty { color: var(--sub); font-size: 13px; padding: 8px 0; }
+  .toggle { color: var(--accent); font-size:12px; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>團隊資料上傳</h1>
+  <p class="sub">
+    career-mvp 三人分支共用的一個小資料收集頁——貼上自己的履歷與一份 JD，存起來給對照分析用。
+    不需要登入，資料存在共用的 Supabase 專案裡，組員彼此看得到。這裡不做 AI 分析，只負責收資料。
+  </p>
+
+  <div class="card">
+    <label>你是誰</label>
+    <select id="memberSel">
+      <option value="Alan">Alan</option>
+      <option value="Berry">Berry</option>
+      <option value="Sunny">Sunny</option>
+      <option value="__other">其他…</option>
+    </select>
+    <input id="memberOther" placeholder="輸入名字" style="display:none;margin-top:8px">
+
+    <label>這筆資料的標籤</label>
+    <input id="labelIn" placeholder="例：履歷 v1、面試心得、目標 JD">
+
+    <label>履歷全文</label>
+    <textarea id="resumeIn" placeholder="貼上履歷全文…"></textarea>
+
+    <label>JD 全文</label>
+    <textarea id="jdIn" placeholder="貼上職缺描述…"></textarea>
+
+    <label>備註（選填）</label>
+    <textarea id="notesIn" style="min-height:60px" placeholder="想補充的背景、脈絡…"></textarea>
+
+    <button class="btn" id="submitBtn">上傳這筆資料</button>
+    <div class="status" id="statusMsg"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 style="margin:0;font-size:15px">目前的紀錄</h3>
+      <span class="toggle" id="refreshBtn">重新整理</span>
+    </div>
+    <div id="listHost"><div class="empty">載入中…</div></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://pbwntmnzjleqgsdmsitb.supabase.co";
+const SUPABASE_KEY = "sb_publishable_lX2BwDcnPDsDBGT4V8MsWg_dmzQUto5";
+
+async function sb(path, opts = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...opts,
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      ...(opts.headers || {}),
+    },
+  });
+  if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
+  return res.status === 204 ? null : res.json();
+}
+
+const memberSel = document.getElementById("memberSel");
+const memberOther = document.getElementById("memberOther");
+memberSel.addEventListener("change", () => {
+  memberOther.style.display = memberSel.value === "__other" ? "block" : "none";
+});
+
+function currentMember() {
+  return memberSel.value === "__other" ? memberOther.value.trim() : memberSel.value;
+}
+
+function fmtTime(iso) {
+  return new Date(iso).toLocaleString("zh-TW", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+let openId = null;
+
+async function loadList() {
+  const host = document.getElementById("listHost");
+  try {
+    const rows = await sb("submissions?select=*&order=created_at.desc");
+    if (!rows.length) { host.innerHTML = `<div class="empty">還沒有人上傳過資料。</div>`; return; }
+    host.innerHTML = rows.map(r => `
+      <div class="item">
+        <div class="item-head">
+          <span class="item-who">${escapeHtml(r.member)}</span>
+          <span class="item-when">${fmtTime(r.created_at)}</span>
+        </div>
+        ${r.label ? `<div class="item-label">${escapeHtml(r.label)}</div>` : ""}
+        <div class="item-prev">${openId === r.id ? fullText(r) : previewText(r)}</div>
+        <div class="item-actions">
+          <button data-toggle="${r.id}">${openId === r.id ? "收合" : "展開全文"}</button>
+          <button class="del" data-del="${r.id}">刪除</button>
+        </div>
+      </div>
+    `).join("");
+    host.querySelectorAll("[data-toggle]").forEach(b => b.addEventListener("click", () => {
+      openId = openId === b.dataset.toggle ? null : b.dataset.toggle;
+      loadList();
+    }));
+    host.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", async () => {
+      if (!confirm("確定刪除這筆資料？")) return;
+      await sb(`submissions?id=eq.${b.dataset.del}`, { method: "DELETE" });
+      loadList();
+    }));
+  } catch (e) {
+    host.innerHTML = `<div class="empty">讀取失敗：${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function previewText(r) {
+  const parts = [];
+  if (r.resume_text) parts.push(`履歷：${r.resume_text.slice(0, 80)}…`);
+  if (r.jd_text) parts.push(`JD：${r.jd_text.slice(0, 80)}…`);
+  return escapeHtml(parts.join("\n") || "（沒有內容）");
+}
+function fullText(r) {
+  const parts = [];
+  if (r.resume_text) parts.push(`【履歷】\n${r.resume_text}`);
+  if (r.jd_text) parts.push(`【JD】\n${r.jd_text}`);
+  if (r.notes) parts.push(`【備註】\n${r.notes}`);
+  return escapeHtml(parts.join("\n\n"));
+}
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+document.getElementById("submitBtn").addEventListener("click", async () => {
+  const member = currentMember();
+  const resume = document.getElementById("resumeIn").value.trim();
+  const jd = document.getElementById("jdIn").value.trim();
+  const label = document.getElementById("labelIn").value.trim();
+  const notes = document.getElementById("notesIn").value.trim();
+  const status = document.getElementById("statusMsg");
+  const btn = document.getElementById("submitBtn");
+
+  if (!member) { status.textContent = "請填你是誰"; status.className = "status err"; return; }
+  if (!resume && !jd) { status.textContent = "履歷或 JD 至少填一項"; status.className = "status err"; return; }
+
+  btn.disabled = true; status.textContent = "上傳中…"; status.className = "status";
+  try {
+    await sb("submissions", {
+      method: "POST",
+      headers: { "Prefer": "return=minimal" },
+      body: JSON.stringify({ member, label, resume_text: resume, jd_text: jd, notes }),
+    });
+    status.textContent = "已上傳"; status.className = "status ok";
+    document.getElementById("labelIn").value = "";
+    document.getElementById("resumeIn").value = "";
+    document.getElementById("jdIn").value = "";
+    document.getElementById("notesIn").value = "";
+    loadList();
+  } catch (e) {
+    status.textContent = `上傳失敗：${e.message}`; status.className = "status err";
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("refreshBtn").addEventListener("click", loadList);
+loadList();
+</script>
+</body>
+</html>
