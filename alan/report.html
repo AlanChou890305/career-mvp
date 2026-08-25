@@ -1,0 +1,545 @@
+<title>進階問題命中率對照實驗</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --ground:      #F4F6F7;
+    --surface:     #FFFFFF;
+    --ink:         #131A1D;
+    --ink-soft:    #4C5A60;
+    --ink-faint:   #7C8A90;
+    --rule:        #D9E0E2;
+    --rule-soft:   #E8EDEE;
+
+    --a:           #93A3A9;
+    --b:           #4E8089;
+    --c:           #0B5561;
+    --c-wash:      #E4EEF0;
+
+    --warn:        #A8562A;
+
+    --serif: "Noto Serif TC", "Songti TC", serif;
+    --sans:  "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
+    --mono:  "IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:    #0E1416;
+      --surface:   #161E21;
+      --ink:       #E7EDEE;
+      --ink-soft:  #A3B0B4;
+      --ink-faint: #758388;
+      --rule:      #2A3639;
+      --rule-soft: #202B2E;
+
+      --a:         #5E6E74;
+      --b:         #5F97A1;
+      --c:         #79C6D2;
+      --c-wash:    #1B2F34;
+
+      --warn:      #D4926A;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:    #0E1416;
+    --surface:   #161E21;
+    --ink:       #E7EDEE;
+    --ink-soft:  #A3B0B4;
+    --ink-faint: #758388;
+    --rule:      #2A3639;
+    --rule-soft: #202B2E;
+
+    --a:         #5E6E74;
+    --b:         #5F97A1;
+    --c:         #79C6D2;
+    --c-wash:    #1B2F34;
+
+    --warn:      #D4926A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-weight: 300;
+    font-size: 16.5px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 50rem;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 6vw, 5rem) clamp(1.15rem, 4vw, 2.5rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.25rem;
+  }
+
+  /* ---------- header ---------- */
+
+  header { display: flex; flex-direction: column; gap: 1.1rem; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: clamp(1.95rem, 5.2vw, 2.9rem);
+    line-height: 1.28;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .standfirst {
+    font-size: 1.08rem;
+    line-height: 1.8;
+    color: var(--ink-soft);
+    max-width: 48ch;
+    text-wrap: pretty;
+    margin: 0;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    color: var(--ink-faint);
+    border-top: 1px solid var(--rule);
+    padding-top: 0.9rem;
+  }
+
+  /* ---------- the comparison band ---------- */
+
+  .band {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: clamp(1.4rem, 4vw, 2.1rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .band-q {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 1.12rem;
+    line-height: 1.7;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  /* 三欄共用同一組 row，數字才會真的對齊在同一條基線上 */
+  .steps {
+    display: grid;
+    grid-template-columns: 1fr minmax(4.5rem, 6rem) 1fr minmax(4.5rem, 6rem) 1fr;
+    grid-template-rows: auto auto auto;
+    column-gap: 1.15rem;
+    row-gap: 0.3rem;
+  }
+
+  .step-tag  { grid-row: 1; align-self: end; }
+  .step-num  { grid-row: 2; }
+  .step-what { grid-row: 3; }
+
+  .step.a .step-tag, .step.a .step-num, .step.a .step-what { grid-column: 1; }
+  .step.b .step-tag, .step.b .step-num, .step.b .step-what { grid-column: 3; }
+  .step.c .step-tag, .step.c .step-num, .step.c .step-what { grid-column: 5; }
+
+  .step { display: contents; }
+
+  .step-tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .step-num {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: clamp(1.5rem, 5vw, 2.15rem);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .step-what {
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  .step.a .step-tag, .step.a .step-num { color: var(--a); }
+  .step.b .step-tag, .step.b .step-num { color: var(--b); }
+  .step.c .step-tag, .step.c .step-num { color: var(--c); }
+
+  /* 差值是「從左欄到右欄的跨距」：兩側等距，上方細線標示跨度，箭頭指向增益方向 */
+  .delta {
+    grid-row: 2;
+    align-self: center;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+    text-align: center;
+    color: var(--ink-faint);
+    white-space: nowrap;
+    border-top: 1px solid var(--rule);
+    padding-top: 0.4rem;
+  }
+  .delta.small { grid-column: 2; }
+  .delta.big   { grid-column: 4; }
+  .delta b {
+    display: block;
+    font-weight: 500;
+    font-size: 0.92rem;
+    letter-spacing: 0;
+    margin-top: 0.1rem;
+  }
+  .delta b::after { content: " →"; opacity: 0.5; }
+  .delta.small b { color: var(--ink-faint); }
+  .delta.big { border-top-color: var(--c); }
+  .delta.big b { color: var(--c); }
+
+  .band-note {
+    font-size: 0.86rem;
+    line-height: 1.7;
+    color: var(--ink-soft);
+    border-top: 1px solid var(--rule-soft);
+    padding-top: 1.1rem;
+    margin: 0;
+  }
+
+  @media (max-width: 33rem) {
+    .steps { display: flex; flex-direction: column; gap: 0.15rem; }
+    .step { display: flex; flex-direction: column; gap: 0.25rem; }
+    .step-tag, .step-num, .step-what, .delta { grid-row: auto; grid-column: auto; }
+    .delta {
+      text-align: left;
+      border-top: none;
+      border-left: 2px solid var(--rule);
+      padding: 0.1rem 0 0.1rem 0.8rem;
+      margin: 0.5rem 0 0.7rem;
+    }
+    .delta.big { border-left-color: var(--c); }
+    .delta b::after { content: " ↓"; }
+    .delta b { display: inline; margin-left: 0.5rem; }
+  }
+
+  /* ---------- sections ---------- */
+
+  section { display: flex; flex-direction: column; gap: 1.15rem; }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 1.32rem;
+    line-height: 1.5;
+    margin: 0;
+    padding-bottom: 0.6rem;
+    border-bottom: 2px solid var(--ink);
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.65;
+    margin: 0 0 0.3rem;
+    text-wrap: balance;
+  }
+
+  p { margin: 0; }
+  p + p { margin-top: 0.75rem; }
+
+  strong { font-weight: 700; }
+  em { font-style: normal; color: var(--warn); font-weight: 500; }
+
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* ---------- findings ---------- */
+
+  .findings { display: flex; flex-direction: column; gap: 1.6rem; }
+
+  .finding {
+    display: grid;
+    grid-template-columns: 2.4rem 1fr;
+    gap: 0 0.9rem;
+    align-items: start;
+  }
+
+  .finding-i {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    padding-top: 0.42rem;
+    border-top: 2px solid var(--rule);
+  }
+  .finding:first-child .finding-i,
+  .finding:nth-child(3) .finding-i { border-top-color: var(--c); }
+
+  .finding-body { display: flex; flex-direction: column; }
+  .finding-body p { color: var(--ink-soft); font-size: 0.95rem; }
+
+  /* ---------- table ---------- */
+
+  .scroll { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    min-width: 30rem;
+  }
+
+  caption {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding-bottom: 0.7rem;
+  }
+
+  th, td {
+    text-align: right;
+    padding: 0.6rem 0.7rem;
+    border-bottom: 1px solid var(--rule-soft);
+    font-variant-numeric: tabular-nums;
+    font-family: var(--mono);
+    font-weight: 400;
+  }
+
+  th:first-child, td:first-child {
+    text-align: left;
+    font-family: var(--sans);
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  thead th {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    border-bottom: 1px solid var(--rule);
+  }
+  thead th.ca { color: var(--a); }
+  thead th.cb { color: var(--b); }
+  thead th.cc { color: var(--c); }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  tr.total td {
+    border-top: 1px solid var(--rule);
+    border-bottom: none;
+    font-weight: 500;
+    padding-top: 0.75rem;
+  }
+  tr.total td:first-child { font-family: var(--sans); font-weight: 700; }
+
+  td.win { background: var(--c-wash); color: var(--c); font-weight: 500; }
+  td.flag { color: var(--warn); }
+
+  .tnote {
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  /* ---------- lists ---------- */
+
+  ol, ul { margin: 0; padding-left: 1.35rem; display: flex; flex-direction: column; gap: 0.55rem; }
+  li { font-size: 0.95rem; line-height: 1.75; color: var(--ink-soft); }
+  li::marker { color: var(--ink-faint); font-family: var(--mono); font-size: 0.85rem; }
+
+  .caveats li { color: var(--ink-soft); }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 1.2rem;
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    line-height: 1.9;
+    color: var(--ink-faint);
+  }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--c-wash);
+    color: var(--c);
+    padding: 0.08em 0.34em;
+    border-radius: 2px;
+  }
+
+  :focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">career-mvp · 第三組 B 組 · mvp/alan</p>
+    <h1>命中率的來源不是經歷，是問法</h1>
+    <p class="standfirst">同一批面試心得語料，三種輸入條件，測 AI 預測面試問題的命中率。</p>
+    <div class="meta">
+      <span>2026-08-18</span>
+      <span>語料 7 筆 / 5 位作者</span>
+      <span>21 次盲測</span>
+      <span>Alan</span>
+    </div>
+  </header>
+
+  <div class="band">
+    <p class="band-q">如果只告訴 AI「這個人在面產品經理」，它猜中的比例是多少？知道這個數字，才知道「讀了經歷」值多少。</p>
+
+    <div class="steps">
+      <div class="step a">
+        <span class="step-tag">A 基準線</span>
+        <span class="step-num">25.9%</span>
+        <span class="step-what">只給產業與職位</span>
+      </div>
+      <div class="delta small">讀經歷帶來<b>+2.6</b></div>
+      <div class="step b">
+        <span class="step-tag">B 加背景</span>
+        <span class="step-num">28.5%</span>
+        <span class="step-what">加上候選人的經歷</span>
+      </div>
+      <div class="delta big">問法設計帶來<b>+9.1</b></div>
+      <div class="step c">
+        <span class="step-tag">C 依型分配</span>
+        <span class="step-num">37.6%</span>
+        <span class="step-what">先判職位型態，再分配題型名額</span>
+      </div>
+    </div>
+
+    <p class="band-note">5 筆硬語料的嚴格命中率平均。A 與 B 的 prompt 只差「有沒有背景」一句，其餘逐字相同，所以 <span class="num">B−A</span> 是乾淨的增益值。<strong>差距落在後半段，不在前半段。</strong></p>
+  </div>
+
+  <section>
+    <h2>四個發現</h2>
+    <div class="findings">
+
+      <div class="finding">
+        <span class="finding-i">01</span>
+        <div class="finding-body">
+          <h3>「給 AI 看經歷」本身幾乎沒有用</h3>
+          <p>加了背景，嚴格命中率只從 <span class="num">25.9%</span> 走到 <span class="num">28.5%</span>。其中和碩專管那筆還<em>掉了</em>（<span class="num">37.5% → 25.0%</span>）——B 組讀完背景後全力追問轉職邏輯，漏掉了「自我介紹」這種一定會問的題；A 組因為沒東西可挖，開場就猜了自我介紹。</p>
+          <p>這一步 ChatGPT 也做得到，而且做完沒有比不做好多少。<strong>上傳履歷讓 AI 分析，不構成護城河。</strong></p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <span class="finding-i">02</span>
+        <div class="finding-body">
+          <h3>有用的是怎麼問，增益是三倍多</h3>
+          <p>C 組的 prompt 逼 AI 做兩件事：先判斷職位是「經歷密集型」還是「知識密集型」以決定題型配額，並要求問題往下鑽一層（不問「你怎麼管 KPI」，問「KPI 的目標是誰、依據什麼訂出來的」）。<span class="num">C−B</span> 的增益是 <span class="num">B−A</span> 的三倍多。</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <span class="finding-i">03</span>
+        <div class="finding-body">
+          <h3>在經歷追問題上，差距是量級的：30% 對 90%</h3>
+          <p>「非讀懂這個人的背景就問不出來」的題目（業務部門 KPI 的制定標準、PIP 執行流程、為什麼把 Repository 分出來），A 組命中 <span class="num">30%</span>，C 組 <span class="num">90%</span>。</p>
+          <p><strong>N16 經歷歸納協助度是真的，但射程很窄</strong>——硬語料 34 題裡只有 5 題屬於這一類，約 <span class="num">15%</span>。很利，覆蓋面小。</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <span class="finding-i">04</span>
+        <div class="finding-body">
+          <h3>往下鑽會鑽偏：C 組在後端那筆輸給基準線</h3>
+          <p>backend-01 上 C 組只有 <span class="num">33.3%</span>，A 與 B 都是 <span class="num">66.7%</span>。C 組把知識密集型的名額配給了參數層問題（<code>pm.max_children</code> 怎麼算、複合索引最左前綴），而面試官問的是「高併發怎麼處理」這種主軸題。</p>
+          <p><strong>細節深度不等於命中率。</strong> Berry 的 v2 在前端那筆掉分（<span class="num">78% → 67%</span>）撞的是同一面牆。這是 C 組下一版要修的地方。</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>逐筆數字</h2>
+    <div class="scroll">
+      <table>
+        <caption>嚴格命中率 · 語意相同才算命中 · 三組都固定猜 8 題</caption>
+        <thead>
+          <tr>
+            <th scope="col">語料</th>
+            <th scope="col">實際題數</th>
+            <th scope="col" class="ca">A</th>
+            <th scope="col" class="cb">B</th>
+            <th scope="col" class="cc">C</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>和碩 專案管理師</td><td>8</td><td>37.5%</td><td>25.0%</td><td class="win">50.0%</td></tr>
+          <tr><td>蝦皮 店舖開發</td><td>7</td><td>14.3%</td><td>28.6%</td><td class="win">42.9%</td></tr>
+          <tr><td>字節跳動 前端</td><td>9</td><td>11.1%</td><td>22.2%</td><td class="win">33.3%</td></tr>
+          <tr><td>威許移動 後端</td><td>3</td><td class="flag">66.7%</td><td class="flag">66.7%</td><td>33.3%</td></tr>
+          <tr><td>群暉 軟體工程師</td><td>7</td><td>0%</td><td>0%</td><td class="win">28.6%</td></tr>
+          <tr class="total"><td>硬語料平均</td><td>34</td><td>25.9%</td><td>28.5%</td><td>37.6%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tnote">寬鬆命中率（含部分命中）A <span class="num">50.3%</span> / B <span class="num">59.2%</span> / C <span class="num">76.6%</span>。<br>
+    經歷追問題 A <span class="num">30%</span> / B <span class="num">40%</span> / C <span class="num">90%</span>。<br>
+    軟語料 2 筆另計 A <span class="num">40%</span> / B <span class="num">70%</span> / C <span class="num">70%</span>；7 筆併計 A <span class="num">29.9%</span> / B <span class="num">40.4%</span> / C <span class="num">46.9%</span>。</p>
+  </section>
+
+  <section>
+    <h2>語料為什麼要分級</h2>
+    <p>7 筆語料沿用 <code>mvp/berry</code> 的整理（<code>collected_by</code> 保留）。跑實驗前回頭讀了 5 篇 PTT 與部落格原文逐筆核對，沒有造假，但發現兩筆的標準答案是原文<strong>沒有逐題列出</strong>、由主題描述改寫成題目的。</p>
+    <p>這兩筆的命中率系統性偏高：A 組在硬語料只有 <span class="num">25.9%</span>，在這兩筆有 <span class="num">40%</span>——因為「說明代表性專案」這種答案任何 prompt 都會命中。<strong>不分級的話基準線會被墊高，三組的差距會被壓縮。</strong>本次做法是兩筆不刪除，但主要結論只用 5 筆硬語料。</p>
+  </section>
+
+  <section>
+    <h2>這份結果不能拿來說什麼</h2>
+    <ul class="caveats">
+      <li>三組都固定猜 8 題，實際題數從 3 到 9 不等。後端那筆只有 3 題，猜 8 題等於亂槍打鳥，所以三組在那筆都偏高；前端那筆有 9 題，天花板是 <span class="num">89%</span>。三組受影響相同，<strong>不影響組間比較，但單筆絕對值不可信</strong>。</li>
+      <li>7 筆只來自 5 位作者，有效獨立樣本約 5。距離 <code>validation-plan.md</code> 的 30 筆目標還很遠。</li>
+      <li>命中判定目前由一個人判，判準尚未與 Berry、Sunny 對齊。已記下 6 條有爭議的判定，留待收斂日三人裁決。</li>
+      <li>要看的是量級差距（<span class="num">30%</span> 對 <span class="num">90%</span>），不是百分點差距。這個樣本數撐不起統計顯著性。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>下一步</h2>
+    <ol>
+      <li>收斂日先對齊命中判準，再談誰的命中率高。6 條爭議判定是對齊的材料。</li>
+      <li>語料 PR 進 <code>assets/fixtures/</code>，讓三人測同一批輸入——這是 <code>mvp-scope.md</code> 原本的規定。</li>
+      <li>C 組下一版修「鑽太深」：知識密集型職位保留主軸題，不要一路問到參數層。</li>
+      <li>自己蒐 10 筆語料補足分工，優先挑答案段逐題列出的硬語料。</li>
+    </ol>
+  </section>
+
+  <footer>
+    方法：<code>./run.sh &lt;組名&gt;</code> 逐筆讀語料，用 <code>awk</code> 切掉「實際被問的問題」那段後餵給 <code>claude -p</code>，輸出存進 <code>results/</code>。盲測由腳本保證，不靠人記得別看答案。無需 API key，成本 0 元。<br>
+    分支 <code>mvp/alan</code>：<code>prompts/</code> 三組 prompt、<code>run.sh</code>、<code>results/</code> 21 個輸出檔、<code>results.md</code> 跑分明細、<code>source-audit.md</code> 原文核對。
+  </footer>
+
+</div>
