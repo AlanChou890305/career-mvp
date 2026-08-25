@@ -12,6 +12,55 @@
 // 屆時走 window.__DEMO_DATA__ 這條路徑，不再 fetch。
 
 const STORAGE_KEY = "alan_mvp_demo_v1";
+
+// ================= 團隊共用資料庫（Supabase） =================
+// 履歷上傳到「履歷」分頁時，順便同步一份到三人共用的 Supabase 專案，
+// 讓 Berry／Sunny 也能各自從這支 app 上傳，不用跑去另一個頁面。
+// 這是背景同步，失敗不影響本機功能——本機 localStorage 永遠是主資料來源。
+const TEAM_SUPABASE_URL = "https://pbwntmnzjleqgsdmsitb.supabase.co";
+const TEAM_SUPABASE_KEY = "sb_publishable_lX2BwDcnPDsDBGT4V8MsWg_dmzQUto5";
+const TEAM_MEMBERS = ["Alan", "Berry", "Sunny"];
+
+async function teamSb(path, opts = {}) {
+  const res = await fetch(`${TEAM_SUPABASE_URL}/rest/v1/${path}`, {
+    ...opts,
+    headers: {
+      "apikey": TEAM_SUPABASE_KEY,
+      "Authorization": `Bearer ${TEAM_SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      ...(opts.headers || {}),
+    },
+  });
+  if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
+  return res.status === 204 ? null : res.json();
+}
+
+async function syncResumeToTeam(resume) {
+  if (!state.member) return;
+  try {
+    const [row] = await teamSb("submissions", {
+      method: "POST",
+      headers: { "Prefer": "return=representation" },
+      body: JSON.stringify({
+        member: state.member,
+        label: resume.label,
+        resume_text: resume.text,
+        jd_text: state.jd || "",
+      }),
+    });
+    toast("已同步到團隊資料庫");
+    if (row?.id) {
+      fetch(`${TEAM_SUPABASE_URL}/functions/v1/generate-followups`, {
+        method: "POST",
+        headers: { "apikey": TEAM_SUPABASE_KEY, "Authorization": `Bearer ${TEAM_SUPABASE_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ submission_id: row.id }),
+      }).catch(() => {});
+    }
+  } catch (e) {
+    console.warn("同步團隊資料庫失敗（不影響本機使用）", e);
+    toast("同步團隊資料庫失敗，履歷仍保留在本機");
+  }
+}
 const TABS = [
   { id: "home", label: "主頁" },
   { id: "resume", label: "履歷" },
@@ -81,6 +130,9 @@ const LOCKS = [
 
 function defaultState() {
   return {
+    member: "",
+    memberPick: "",
+    memberOtherName: "",
     onboarded: false,
     obStep: 0,
     obReturnTo: null,
@@ -182,6 +234,46 @@ function basicsDone() {
 function stepOk(n) {
   const b = state.basics;
   return [!!b.openness, b.goal.trim().length > 5, b.skills.length > 0, !!b.tgtTitle.trim(), b.industries.length > 0][n];
+}
+
+function renderMemberGate() {
+  const other = state.memberOtherName;
+  return `
+    <div class="view obwrap">
+      <div class="stepno">開始之前</div>
+      <div class="qtitle">你是誰？</div>
+      <div class="qhint">career-mvp 三人小組共用這支 app。選你自己的名字——履歷上傳時會同步進團隊共用的資料庫，方便互相對照。這個選擇存在這台裝置上，之後可以在「設定」分頁改。</div>
+      <div>${TEAM_MEMBERS.map(m => `
+        <button class="optcard ${state.memberOtherName === "" && state.memberPick === m ? "sel" : ""}" data-memberpick="${m}"
+          style="width:100%;text-align:left;cursor:pointer;font-family:inherit;display:block">
+          <div class="th" style="margin:0;font-size:var(--fs-body);color:${state.memberPick === m ? "var(--accent-d)" : "var(--ink)"}">
+            ${state.memberPick === m ? "◉" : "○"} ${m}</div>
+        </button>`).join("")}
+        <button class="optcard ${state.memberPick === "__other" ? "sel" : ""}" data-memberpick="__other"
+          style="width:100%;text-align:left;cursor:pointer;font-family:inherit;display:block">
+          <div class="th" style="margin:0;font-size:var(--fs-body);color:${state.memberPick === "__other" ? "var(--accent-d)" : "var(--ink)"}">
+            ${state.memberPick === "__other" ? "◉" : "○"} 其他…</div>
+        </button>
+        ${state.memberPick === "__other" ? `<input class="field" id="memberOtherIn" placeholder="輸入名字" value="${other}" style="margin-top:8px">` : ""}
+      </div>
+      <div class="obfoot"><button class="btn" id="memberContinueBtn">開始使用 →</button></div>
+    </div>`;
+}
+
+function wireMemberGate() {
+  const screen = document.getElementById("screen");
+  screen.querySelectorAll("[data-memberpick]").forEach((btn) => {
+    btn.addEventListener("click", () => { state.memberPick = btn.dataset.memberpick; render(); });
+  });
+  const oi = document.getElementById("memberOtherIn");
+  if (oi) oi.addEventListener("input", () => { state.memberOtherName = oi.value; });
+  document.getElementById("memberContinueBtn").addEventListener("click", () => {
+    const name = state.memberPick === "__other" ? state.memberOtherName.trim() : state.memberPick;
+    if (!name) { toast("先選一個名字"); return; }
+    state.member = name;
+    saveState();
+    render();
+  });
 }
 
 function obShell(n, title, hint, body, wide) {
@@ -928,6 +1020,13 @@ function renderSettings() {
       <div class="h1">設定</div>
 
       <div class="card">
+        <h3>身分</h3>
+        <div class="brow"><span>你是</span><b>${state.member || "—"}</b></div>
+        <div class="sub" style="margin-top:6px">履歷上傳時會同步進團隊共用資料庫，標記成這個名字。</div>
+        <button class="btn block subtle" id="changeMemberBtn" style="margin-top:10px">切換身分</button>
+      </div>
+
+      <div class="card">
         <h3>示範模式</h3>
         <div class="swrow">
           <div><div class="sn">遮蔽個資與公司名</div>
@@ -1175,6 +1274,18 @@ function renderTabbar() {
 let lastViewKey = null;
 
 function render() {
+  if (!state.member) {
+    const screen = document.getElementById("screen");
+    document.getElementById("tabbar").style.display = "none";
+    const viewKey = "membergate";
+    const changed = viewKey !== lastViewKey;
+    lastViewKey = viewKey;
+    screen.innerHTML = renderMemberGate();
+    if (changed) screen.scrollTop = 0;
+    wireMemberGate();
+    return;
+  }
+
   renderTabbar();
   const screen = document.getElementById("screen");
   const viewKey = state.onboarded ? state.tab : "ob" + state.obStep;
@@ -1265,10 +1376,12 @@ function wireTab() {
         primary: first,
       });
       state.resume = state.resumes.find(r => r.primary).text;
+      const added = state.resumes[state.resumes.length - 1];
       state.draftLabel = ""; state.draftText = "";
       saveState();
       toast(first ? "🔓 已解鎖 2 個模組" : "➕ 已新增");
       render();
+      syncResumeToTeam(added);
     };
 
     const ab = document.getElementById("addResBtn");
@@ -1416,6 +1529,9 @@ function wireTab() {
   }
 
   if (state.tab === "settings") {
+    document.getElementById("changeMemberBtn").addEventListener("click", () => {
+      state.member = ""; state.memberPick = ""; saveState(); render();
+    });
     document.getElementById("maskSw").addEventListener("click", () => {
       state.demoMask = !state.demoMask; saveState();
       toast(state.demoMask ? "已遮蔽個資與公司名" : "已顯示真實資訊");
