@@ -106,12 +106,12 @@ Deno.serve(async (req) => {
 
     const { data: row, error: readErr } = await supabase
       .from("submissions")
-      .select("id, resume_text, jd_text")
+      .select("id, resumes(text), jds(text)")
       .eq("id", submission_id)
       .single();
     if (readErr || !row) return json({ error: "找不到這筆資料" }, 404);
 
-    const followups = runHeuristics(row.resume_text || "", row.jd_text || "");
+    const followups = runHeuristics(row.resumes?.text || "", row.jds?.text || "");
 
     if (!followups.length) {
       await supabase.from("submissions").update({

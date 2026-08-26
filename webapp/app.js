@@ -17,15 +17,57 @@ const STORAGE_KEY = "alan_mvp_demo_v1";
 // 履歷上傳到「履歷」分頁時，順便同步一份到三人共用的 Supabase 專案，
 // 讓 Berry／Sunny 也能各自從這支 app 上傳，不用跑去另一個頁面。
 // 這是背景同步，失敗不影響本機功能——本機 localStorage 永遠是主資料來源。
+//
+// owner_id 用 Supabase Anonymous Auth 的 auth.uid()：不用輸入任何東西、體驗跟
+// 匿名 id 一樣，但 RLS 可以真的用 owner_id = auth.uid() 擋掉別人讀到你的資料。
+// 三人內部蒐集語料時，owner_id 就是那個瀏覽器 session 的 uid，沒有另外用
+// "alan"/"berry"/"sunny" 這種字串——要知道是誰蒐集的，看是哪支瀏覽器/session 上傳的。
 const TEAM_SUPABASE_URL = "https://pbwntmnzjleqgsdmsitb.supabase.co";
 const TEAM_SUPABASE_KEY = "sb_publishable_lX2BwDcnPDsDBGT4V8MsWg_dmzQUto5";
+const TEAM_SESSION_KEY = "alan_mvp_team_session_v1";
+
+let teamSessionPromise = null;
+
+async function teamAuth(path, body) {
+  const res = await fetch(`${TEAM_SUPABASE_URL}/auth/v1/${path}`, {
+    method: "POST",
+    headers: {
+      "apikey": TEAM_SUPABASE_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body || {}),
+  });
+  if (!res.ok) throw new Error(`Supabase auth ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+// 匿名登入一次、存 access token，之後帶著這個 token 打 REST API，
+// RLS 才能用 auth.uid() 判斷是不是同一個 owner。
+async function getTeamSession() {
+  if (teamSessionPromise) return teamSessionPromise;
+  teamSessionPromise = (async () => {
+    const stored = JSON.parse(localStorage.getItem(TEAM_SESSION_KEY) || "null");
+    if (stored?.refresh_token) {
+      try {
+        return await teamAuth("token?grant_type=refresh_token", { refresh_token: stored.refresh_token });
+      } catch (e) {
+        console.warn("團隊資料庫 refresh 失敗，改用新的匿名登入", e);
+      }
+    }
+    const session = await teamAuth("signup", {});
+    localStorage.setItem(TEAM_SESSION_KEY, JSON.stringify(session));
+    return session;
+  })();
+  return teamSessionPromise;
+}
 
 async function teamSb(path, opts = {}) {
+  const session = await getTeamSession();
   const res = await fetch(`${TEAM_SUPABASE_URL}/rest/v1/${path}`, {
     ...opts,
     headers: {
       "apikey": TEAM_SUPABASE_KEY,
-      "Authorization": `Bearer ${TEAM_SUPABASE_KEY}`,
+      "Authorization": `Bearer ${session.access_token}`,
       "Content-Type": "application/json",
       ...(opts.headers || {}),
     },
@@ -35,30 +77,61 @@ async function teamSb(path, opts = {}) {
 }
 
 async function syncResumeToTeam(resume) {
-  if (!state.member) return;
   try {
-    const [row] = await teamSb("submissions", {
+    const [resumeRow] = await teamSb("resumes", {
       method: "POST",
       headers: { "Prefer": "return=representation" },
-      body: JSON.stringify({
-        member: state.member,
-        label: resume.label,
-        resume_text: resume.text,
-        jd_text: state.jd || "",
-      }),
+      body: JSON.stringify({ label: resume.label, text: resume.text }),
+    });
+    const [jdRow] = await teamSb("jds", {
+      method: "POST",
+      headers: { "Prefer": "return=representation" },
+      body: JSON.stringify({ text: state.jd || "" }),
+    });
+    const [submissionRow] = await teamSb("submissions", {
+      method: "POST",
+      headers: { "Prefer": "return=representation" },
+      body: JSON.stringify({ resume_id: resumeRow.id, jd_id: jdRow.id }),
     });
     toast("已同步到團隊資料庫");
-    if (row?.id) {
-      fetch(`${TEAM_SUPABASE_URL}/functions/v1/generate-followups`, {
-        method: "POST",
-        headers: { "apikey": TEAM_SUPABASE_KEY, "Authorization": `Bearer ${TEAM_SUPABASE_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ submission_id: row.id }),
-      }).catch(() => {});
+    if (submissionRow?.id) {
+      fetchRealFollowups(submissionRow.id);
     }
   } catch (e) {
     console.warn("同步團隊資料庫失敗（不影響本機使用）", e);
     toast("同步團隊資料庫失敗，履歷仍保留在本機");
   }
+}
+
+// 拿剛存進 Supabase 的履歷/JD，跑 generate-followups（目前是規則引擎，非 AI），
+// 結果取代主頁/職缺分析頁上原本寫死的示範追問題目。失敗時維持示範資料，不擋畫面。
+async function fetchRealFollowups(submissionId) {
+  state.realFollowupsStatus = "pending";
+  try {
+    const session = await getTeamSession();
+    const res = await fetch(`${TEAM_SUPABASE_URL}/functions/v1/generate-followups`, {
+      method: "POST",
+      headers: {
+        "apikey": TEAM_SUPABASE_KEY,
+        "Authorization": `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ submission_id: submissionId }),
+    });
+    if (!res.ok) throw new Error(`generate-followups ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    state.realFollowups = (data.followups || []).map((f, i) => ({
+      id: "rf" + i,
+      q: f.question,
+      why: f.why,
+    }));
+    state.realFollowupsStatus = "done";
+  } catch (e) {
+    console.warn("跑追問分析失敗，先顯示示範追問題目", e);
+    state.realFollowupsStatus = "error";
+  }
+  saveState();
+  render();
 }
 const TABS = [
   { id: "home", label: "主頁" },
@@ -164,6 +237,8 @@ function defaultState() {
     actualRaw: "",     // 面試官實際問的問題（一行一題）
     actualLocked: false,
     actualLockedAt: null,
+    realFollowups: null,       // 讀你貼的履歷/JD 跑出來的追問（generate-followups），有值時取代示範資料
+    realFollowupsStatus: null, // null=還沒跑 | "pending" | "done" | "error"
     // 內部驗證畫面用，跟一般使用者體驗無關
     validationPersonaId: realPersonas()[0].id,
     validationRevealed: false,
@@ -469,6 +544,12 @@ function computeStats() {
   return { triedCount, usefulCount, completeness, topRole: sorted[0], apps: state.applications.length, versions: state.resumeVersions.length, qCount };
 }
 
+// 有跑出真的追問（讀使用者貼的履歷/JD）就用真的，否則退回示範資料，
+// 讓還沒同步成功／沒有網路的人也能看到完整畫面。
+function currentFollowups() {
+  return (state.realFollowups && state.realFollowups.length) ? state.realFollowups : ALAN_JOB.diagnosis.followups;
+}
+
 function lv(x){ return x==="強"?100:x==="中"?60:30 }
 function jdMatchScore(J){
   const strong = J.fitStrong.length, weak = J.fitWeak.length, miss = J.fitMiss.length;
@@ -488,7 +569,7 @@ function upsertCurrentJdAnalysis() {
     position: J.position,
     score: unlocked("jdMatch") ? jdMatchScore(J) : null,
     followupCount: answeredFollowupIds().length,
-    followups: D.followups.map(f => ({ q: f.q, why: f.why, answer: state.followupAnswers[f.id] || "" })),
+    followups: currentFollowups().map(f => ({ q: f.q, why: f.why, answer: state.followupAnswers[f.id] || "" })),
     fitStrong: J.fitStrong, fitWeak: J.fitWeak, fitMiss: J.fitMiss,
     hardest: J.hardest,
     questions: J.questions,
@@ -573,7 +654,7 @@ function renderHome() {
         <h3>你補充的背景資訊</h3>
         <div class="sub">回答「AI 追問」之後回填在這裡，會一起用來調整方向建議與匹配分數</div>
         ${answeredFollowupIds().map(id => {
-          const f = ALAN_JOB.diagnosis.followups.find(x => x.id === id);
+          const f = currentFollowups().find(x => x.id === id);
           return f ? `<div class="ast"><div class="cn">${f.q}</div><div class="sub">${state.followupAnswers[id]}</div></div>` : "";
         }).join("")}
       </div>` : ""}
@@ -945,8 +1026,8 @@ function renderQuestions() {
       </div>
 
       <div class="card">
-        <div class="row between"><h3 style="margin:0">AI 想追問你的問題</h3><span class="chip chip-live">已答 ${answered.length}/${D.followups.length}</span></div>
-        ${D.followups.map(f => `
+        <div class="row between"><h3 style="margin:0">AI 想追問你的問題</h3><span class="chip chip-live">已答 ${answered.length}/${currentFollowups().length}</span></div>
+        ${currentFollowups().map(f => `
           <div class="rec ${state.followupAnswers[f.id] && state.followupAnswers[f.id].trim() ? "on" : ""}">
             <div class="rt">${f.q}</div>
             <div class="sub"><b>為什麼問這題</b>　${f.why}</div>
