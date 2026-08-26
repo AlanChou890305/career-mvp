@@ -97,10 +97,43 @@ async function syncResumeToTeam(resume) {
     if (submissionRow?.id) {
       fetchRealFollowups(submissionRow.id);
     }
+    if (resumeRow?.id) {
+      fetchRealProfile(resumeRow.id);
+    }
   } catch (e) {
     console.warn("同步團隊資料庫失敗（不影響本機使用）", e);
     toast("同步團隊資料庫失敗，履歷仍保留在本機");
   }
+}
+
+// 拿剛存進 Supabase 的履歷 + 這個人的 basics，跑 analyze-profile（真的叫 Claude API），
+// 結果取代主頁上原本寫死的 ALAN.dash 示範資料（職涯目標/工作類型/技能雷達/資產短板）。
+// 失敗時維持示範資料，不擋畫面。
+async function fetchRealProfile(resumeId) {
+  state.realProfileStatus = "pending";
+  saveState();
+  try {
+    const session = await getTeamSession();
+    const res = await fetch(`${TEAM_SUPABASE_URL}/functions/v1/analyze-profile`, {
+      method: "POST",
+      headers: {
+        "apikey": TEAM_SUPABASE_KEY,
+        "Authorization": `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ resume_id: resumeId, basics: state.basics }),
+    });
+    if (!res.ok) throw new Error(`analyze-profile ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    if (data.error || !data.profile) throw new Error(data.error || "沒有回傳分析結果");
+    state.realProfile = data.profile;
+    state.realProfileStatus = "done";
+  } catch (e) {
+    console.warn("跑職涯畫像分析失敗，先顯示示範資料", e);
+    state.realProfileStatus = "error";
+  }
+  saveState();
+  render();
 }
 
 // 拿剛存進 Supabase 的履歷/JD，跑 generate-followups（目前是規則引擎，非 AI），
@@ -243,6 +276,8 @@ function defaultState() {
     realFollowups: null,       // 讀你貼的履歷/JD 跑出來的追問（generate-followups），有值時取代示範資料
     realFollowupsStatus: null, // null=還沒跑 | "pending" | "done" | "error"
     realFit: null,              // 讀你貼的履歷/JD 跑出來的適配度分析（fitStrong/fitWeak/fitMiss），有值時取代示範資料
+    realProfile: null,          // 讀你的 basics/履歷跑出來的職涯畫像（analyze-profile，真的叫 Claude），有值時取代主頁示範資料
+    realProfileStatus: null,    // null=還沒跑 | "pending" | "done" | "error"
     // 內部驗證畫面用，跟一般使用者體驗無關
     validationPersonaId: realPersonas()[0].id,
     validationRevealed: false,
@@ -560,6 +595,12 @@ function currentFit() {
   return { fitStrong: ALAN_JOB.fitStrong, fitWeak: ALAN_JOB.fitWeak, fitMiss: ALAN_JOB.fitMiss };
 }
 
+// 同 currentFollowups()：有真的職涯畫像分析（analyze-profile）就用真的，否則退回示範資料。
+function currentProfile() {
+  if (state.realProfile) return state.realProfile;
+  return ALAN.dash;
+}
+
 function lv(x){ return x==="強"?100:x==="中"?60:30 }
 function jdMatchScore(fit){
   const strong = fit.fitStrong.length, weak = fit.fitWeak.length, miss = fit.fitMiss.length;
@@ -630,9 +671,15 @@ function lockCard(L){
 }
 
 function renderHome() {
-  const b = state.basics, D = ALAN.dash;
+  const b = state.basics, D = currentProfile();
+  const isRealProfile = !!state.realProfile;
   const need = LOCKS.filter(L=>!unlocked(L.id));
   const pct = Math.round((3 - need.length) / 3 * 100);
+  const profileChip = isRealProfile
+    ? `<span class="chip chip-real">● 依你的 basics/履歷生成</span>`
+    : state.realProfileStatus === "pending"
+      ? `<span class="chip chip-mock">○ 分析中…</span>`
+      : `<span class="chip chip-mock">○ 示範資料，尚未根據你的 basics/履歷調整</span>`;
 
   return `
     <div class="view">
@@ -653,7 +700,7 @@ function renderHome() {
       </div>
 
       <div class="card">
-        <h3>職涯目標</h3>
+        <div class="row between"><h3 style="margin:0">職涯目標</h3>${profileChip}</div>
         <div class="sub">AI 從你第 2 題的自然語言回答解析出來的</div>
         <div class="goal"><span class="gy">3 年</span><div>${D.goal3}</div></div>
         <div class="goal"><span class="gy gy5">5 年</span><div>${D.goal5}</div></div>
@@ -680,7 +727,7 @@ function renderHome() {
         <h3>技能能力方向</h3>
         <div class="sub">面積來自你的實際成果證據強度，不是自評</div>
         ${radar(D.radar)}
-        ${ALAN.capabilities.map(c=>`
+        ${D.capabilities.map(c=>`
           <div class="cap">
             <div class="row between"><span class="cn">${c.name}</span><span class="tg tg-${c.level}">${c.level}</span></div>
             <div class="bar"><i style="width:${lv(c.level)}%" class="b-${c.level}"></i></div>
@@ -702,9 +749,9 @@ function renderHome() {
         <button class="linklike" id="toggleFitMore" type="button" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--fill)">${state.showFitMore ? "收合資產與短板 ↑" : "看你可能沒發現的資產與短板 →"}</button>
         ${state.showFitMore ? `
         <h3 style="margin-top:14px">你可能沒發現的資產</h3>
-        ${ALAN.assets.map(a=>`<div class="ast"><div class="cn">${a.t}</div><div class="sub">${a.d}</div></div>`).join("")}
+        ${(D.assets && D.assets.length ? D.assets : ALAN.assets).map(a=>`<div class="ast"><div class="cn">${a.t}</div><div class="sub">${a.d}</div></div>`).join("")}
         <h3 style="margin-top:14px">短板</h3>
-        ${ALAN.gaps.map(g=>`<div class="ast">
+        ${(D.gaps && D.gaps.length ? D.gaps : ALAN.gaps).map(g=>`<div class="ast">
           <div class="row between"><span class="cn">${g.t}</span><span class="tg ${g.fix==="補得起來"?"tg-fix":"tg-avoid"}">${g.fix}</span></div>
           <div class="sub">${g.d}</div></div>`).join("")}
         ` : ``}
