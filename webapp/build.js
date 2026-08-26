@@ -122,6 +122,11 @@ function main() {
   // 拿掉 CDN 圖示字型；圖示已經改成內嵌 SVG。
   html = html.replace(/\s*<link rel="stylesheet" href="https:\/\/cdn\.jsdelivr\.net\/npm\/framework7-icons[^>]*>\n?/, "\n");
 
+  // 拿掉 PDF 文字抽取用的 pdf.js CDN script：dist 單檔的 CSP 只放行 Google Fonts，
+  // 擋掉這顆外部 script，正式站上傳 PDF 維持原本的示範行為（app.js 會偵測
+  // window.pdfjsLib 不存在自動退回）。
+  html = html.replace(/\s*<!-- PDF 履歷上傳用來抽文字[^>]*-->\s*<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/pdfjs-dist[^>]*><\/script>\n?/, "\n");
+
   // 把外部 styles.css 換成 inline <style>。
   html = html.replace(/<link rel="stylesheet" href="styles\.css">/, `<style>\n${styles}\n</style>`);
 

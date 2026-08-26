@@ -278,10 +278,31 @@ function defaultState() {
     realFit: null,              // 讀你貼的履歷/JD 跑出來的適配度分析（fitStrong/fitWeak/fitMiss），有值時取代示範資料
     realProfile: null,          // 讀你的 basics/履歷跑出來的職涯畫像（analyze-profile，真的叫 Claude），有值時取代主頁示範資料
     realProfileStatus: null,    // null=還沒跑 | "pending" | "done" | "error"
+    jdSubmitted: false,        // 是否已按下「分析這份 JD」——貼完文字不會自動跑分析，要按過這顆才會送出真的分析
     // 內部驗證畫面用，跟一般使用者體驗無關
     validationPersonaId: realPersonas()[0].id,
     validationRevealed: false,
   };
+}
+
+// PDF 履歷上傳的文字抽取，用 pdf.js（見 index.html 的 CDN script）。只有開發模式
+// 才會載入這顆 library，正式打包的 dist 單檔沒有，window.pdfjsLib 會是 undefined，
+// 呼叫端要檢查過再叫這個函數。
+if (window.pdfjsLib) {
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js";
+}
+async function extractPdfText(file) {
+  const buf = await file.arrayBuffer();
+  const doc = await window.pdfjsLib.getDocument({ data: buf }).promise;
+  const pages = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((it) => it.str).join(" "));
+  }
+  const text = pages.join("\n").trim();
+  if (!text) throw new Error("PDF 抽出來是空的（可能是掃描檔/圖片，沒有可選取的文字層）");
+  return text;
 }
 
 function loadState() {
@@ -595,6 +616,27 @@ function currentFit() {
   return { fitStrong: ALAN_JOB.fitStrong, fitWeak: ALAN_JOB.fitWeak, fitMiss: ALAN_JOB.fitMiss };
 }
 
+// 公司名／職位／產業／型態這幾個欄位，規則引擎完全沒有邏輯可以從 JD 全文抽出來——
+// 貼的是示範 JD 全文才用示範資料的公司名/職位，否則從使用者貼的 JD 第一行取一個
+// 顯示用標籤，不編造公司名。isDemo 同時標記「面試題目／面試前準備」這些目前
+// 完全沒有真的版本、永遠是示範內容的區塊，讓畫面上老實標出來。
+function jdMeta(jdText) {
+  const t = (jdText || "").trim();
+  const isDemo = t === (ALAN_JOB.jdText || "").trim();
+  if (isDemo) {
+    return { company: ALAN_JOB.company, position: ALAN_JOB.position, industry: ALAN_JOB.industry, format: ALAN_JOB.format, isDemo: true };
+  }
+  const firstLine = t.split(/\n/).map((s) => s.trim()).find(Boolean) || "";
+  const label = firstLine.length > 28 ? firstLine.slice(0, 28) + "…" : firstLine;
+  return { company: "", position: label || "未命名職缺", industry: "", format: "", isDemo: false };
+}
+function jdTitle(meta) {
+  return meta.company ? `${meta.company} · ${meta.position}` : meta.position;
+}
+function demoContentNote() {
+  return `<div class="mock-note" style="margin-bottom:10px">示範範例——規則引擎目前只算得出「追問」與「適配度落差」，這裡的內容不是根據你的 JD/履歷算出來的。</div>`;
+}
+
 // 同 currentFollowups()：有真的職涯畫像分析（analyze-profile）就用真的，否則退回示範資料。
 function currentProfile() {
   if (state.realProfile) return state.realProfile;
@@ -612,12 +654,13 @@ function upsertCurrentJdAnalysis() {
   if (!state.jd.trim()) return;
   if (!state.currentJdId) state.currentJdId = "jd" + Date.now();
   const prev = state.jdAnalyses.find(x => x.id === state.currentJdId);
-  const J = ALAN_JOB, D = J.diagnosis;
+  const J = ALAN_JOB, D = J.diagnosis, meta = jdMeta(state.jd);
   const rec = {
     id: state.currentJdId,
     jd: state.jd,
-    company: J.company,
-    position: J.position,
+    company: meta.company,
+    position: meta.position,
+    isDemo: meta.isDemo, // 面試題目／面試前準備目前永遠是示範內容，畫面靠這個旗標標示出來
     score: unlocked("jdMatch") ? jdMatchScore(currentFit()) : null,
     followupCount: answeredFollowupIds().length,
     followups: currentFollowups().map(f => ({ q: f.q, why: f.why, answer: state.followupAnswers[f.id] || "" })),
@@ -636,7 +679,7 @@ function upsertCurrentJdAnalysis() {
 function planDone(id){ return !!(state.planAdopt[id]||{}).done }
 function unlocked(id){
   if (id==="fitAdvice") return state.resumes.length > 0;
-  if (id==="jdHasFollowups") return state.jd.trim().length > 10;
+  if (id==="jdHasFollowups") return state.jdSubmitted && state.jd.trim().length > 10;
   if (id==="jdMatch")   return state.jd.trim().length > 10 && answeredFollowupIds().length > 0;
   if (id==="appTable")  return state.applications.length > 0;
   return false;
@@ -875,7 +918,7 @@ function renderJdListingPage() {
           return `
           <div class="rec" data-viewjd="${r.id}" style="cursor:pointer">
             <div class="row between" style="gap:8px">
-              <span class="rt">${r.company} · ${r.position}</span>
+              <span class="rt">${r.company ? r.company + " · " + r.position : r.position}</span>
               <div style="display:flex;align-items:center;gap:4px;flex:none">
                 ${scoreChip}
                 <button class="iconbtn" data-delanalysis="${r.id}" type="button" title="刪除這筆">🗑</button>
@@ -911,9 +954,10 @@ function jobSection(key, title, bodyHtml) {
 
 function renderAnalysisView(r) {
   const planned = (r.prep || []).filter(p => p.planned).length;
+  const contentIsDemo = r.isDemo !== false; // 舊紀錄沒存這個旗標，一律當示範內容處理，比較安全
   return `<div class="view">
     <button class="backlink" id="backFromAnalysisView">← 回到職缺</button>
-    <div class="h1">${r.company} · ${r.position}</div>
+    <div class="h1">${r.company ? r.company + " · " + r.position : r.position}</div>
     <div class="card">
       <div class="row between"><h3 style="margin:0">JD 匹配分數（存檔時）</h3>${r.score === null ? `<span class="chip chip-mock">進行中</span>` : `<span class="chip chip-real">${r.score}</span>`}</div>
       <div class="sub">存於 ${r.createdAt}，當時已答 ${r.followupCount} 題追問。這個分數是存檔當下凍結的，之後在「職缺」分頁的操作不會改到它。</div>
@@ -940,6 +984,7 @@ function renderAnalysisView(r) {
     `)}
 
     ${anaSection("prep", `面試前準備（存檔時） <span class="chip chip-live">${planned}/${r.prep.length} 打算做</span>`, `
+      ${contentIsDemo ? demoContentNote() : ""}
       ${r.prep.map(p => `
         <div class="rec ${p.planned ? "on" : ""}">
           <div class="rt">${p.planned ? "☑" : "☐"} ${p.t}</div>
@@ -950,12 +995,14 @@ function renderAnalysisView(r) {
     `)}
 
     ${anaSection("hardest", "最可能被問倒的一題（存檔時）", `
+      ${contentIsDemo ? demoContentNote() : ""}
       <div class="hardq">${r.hardest.q}</div>
       <div class="sub" style="margin:8px 0"><b>為什麼</b>　${r.hardest.why}</div>
       ${r.hardest.how.map(h=>`<div class="sub" style="margin-bottom:6px">${h}</div>`).join("")}
     `)}
 
     ${anaSection("questions", "AI 猜這場會問的 8 題（存檔時）", `
+      ${contentIsDemo ? demoContentNote() : ""}
       ${r.questions.map((q,i)=>`<div class="qq"><span class="n">${i+1}</span><div>${q}</div></div>`).join("")}
     `)}
     ` : ""}
@@ -963,7 +1010,7 @@ function renderAnalysisView(r) {
 }
 
 function renderJob() {
-  const J = ALAN_JOB;
+  const J = ALAN_JOB, meta = jdMeta(state.jd);
 
   if (state.viewingAnalysisId) {
     const r = state.jdAnalyses.find(x => x.id === state.viewingAnalysisId);
@@ -982,6 +1029,7 @@ function renderJob() {
       <div class="card">
         <h3>職缺 JD</h3>
         <textarea id="jdInput" placeholder="貼上職缺描述…">${state.jd}</textarea>
+        <button class="btn block" id="analyzeJd" type="button" style="margin-top:10px">分析這份 JD →</button>
         <button class="linklike" id="useMyJd" type="button">帶入示範資料 →</button>
       </div>
     </div>`;
@@ -993,7 +1041,7 @@ function renderJob() {
       <button class="backlink" id="backFromJobFlow">← 回到分析紀錄列表</button>
       <div class="h1">這份職缺</div>
       <div class="card">
-        <div class="row between"><h3 style="margin:0">JD 已收到</h3><span class="chip chip-live">${J.company} · ${J.position}</span></div>
+        <div class="row between"><h3 style="margin:0">JD 已收到</h3><span class="chip chip-live">${jdTitle(meta)}</span></div>
         <div class="sub">在給你匹配分數之前，AI 先指出幾個落差、想追問幾個問題——回答至少 1 題之後才會顯示匹配分數與面試前準備。</div>
         <button class="btn block" data-goto="questions" style="margin-top:10px">看 AI 的追問 →</button>
         <button class="linklike" id="resetJd" type="button" style="margin-top:8px">換一份 JD，重新分析 →</button>
@@ -1006,10 +1054,10 @@ function renderJob() {
     <div class="view">
       <button class="backlink" id="backFromJobFlow">← 回到分析紀錄列表</button>
       <div class="card jobhead">
-        <div class="jc">${J.company}</div>
-        <div class="jp">${J.position}</div>
-        <div class="sub">${J.industry}</div>
-        <div class="fmt">${J.format}</div>
+        ${meta.company ? `<div class="jc">${meta.company}</div>` : ""}
+        <div class="jp">${meta.position}</div>
+        ${meta.industry ? `<div class="sub">${meta.industry}</div>` : ""}
+        ${meta.format ? `<div class="fmt">${meta.format}</div>` : ""}
       </div>
 
       <div class="card">
@@ -1024,6 +1072,7 @@ function renderJob() {
       `)}
 
       ${jobSection("prep", `面試前準備 <span class="chip chip-live">${planned}/${J.prep.length} 打算做</span>`, `
+        ${meta.isDemo ? "" : demoContentNote()}
         <div class="sub">時間尺度是小時。勾「我打算做」之後，面試完到「面試後」分頁結算。</div>
         ${J.prep.map(p=>{const st=prepSt(p.id);return `
           <div class="rec ${st.planned?"on":""}">
@@ -1037,17 +1086,20 @@ function renderJob() {
       `)}
 
       ${jobSection("hardest", "最可能被問倒的一題", `
+        ${meta.isDemo ? "" : demoContentNote()}
         <div class="hardq">${J.hardest.q}</div>
         <div class="sub" style="margin:8px 0"><b>為什麼</b>　${J.hardest.why}</div>
         ${J.hardest.how.map(h=>`<div class="sub" style="margin-bottom:6px">${h}</div>`).join("")}
       `)}
 
       ${jobSection("questions", "AI 猜這場會問的 8 題", `
+        ${meta.isDemo ? "" : demoContentNote()}
         <div class="sub">面試後請先到「面試後」分頁填實際被問的題，再回來比對。</div>
         ${J.questions.map((q,i)=>`<div class="qq"><span class="n">${i+1}</span><div>${q}</div></div>`).join("")}
       `)}
 
       ${jobSection("resumeGaps", "履歷上講不清楚的地方", `
+        ${meta.isDemo ? "" : demoContentNote()}
         ${J.resumeGaps.map(g=>`<div class="ast"><div class="cn">${g.t}</div><div class="sub">${g.d}</div></div>`).join("")}
       `)}
 
@@ -1620,8 +1672,13 @@ function wireTab() {
           const rd = new FileReader();
           rd.onload = () => done(String(rd.result));
           rd.readAsText(f);
+        } else if (/\.pdf$/i.test(f.name) && window.pdfjsLib) {
+          extractPdfText(f).then(done).catch((e) => {
+            console.warn("PDF 文字抽取失敗，改帶入示範內容", e);
+            done(ALAN.resumeText);
+          });
         } else {
-          // Demo：PDF 不做真的文字抽取，直接帶入示範內容
+          // 開發模式沒有載入 pdf.js（例如正式打包的 dist 單檔）：PDF 不做真的文字抽取，直接帶入示範內容
           done(ALAN.resumeText);
         }
       });
@@ -1687,6 +1744,7 @@ function wireTab() {
     const sja = document.getElementById("startJdAnalysis");
     if (sja) sja.addEventListener("click", () => {
       state.jd = "";
+      state.jdSubmitted = false;
       state.followupAnswers = {};
       state.gapHitAnswers = {};
       state.prepAdopt = {};
@@ -1699,16 +1757,28 @@ function wireTab() {
     const bjf = document.getElementById("backFromJobFlow");
     if (bjf) bjf.addEventListener("click", () => { state.jobFlowActive = false; state.jobOpenSection = null; saveState(); render(); });
     const jt = document.getElementById("jdInput");
-    if (jt) { jt.addEventListener("input", () => { state.jd = jt.value; saveState(); });
-              jt.addEventListener("blur", () => render()); }
+    if (jt) { jt.addEventListener("input", () => { state.jd = jt.value; saveState(); }); }
+    const aj = document.getElementById("analyzeJd");
+    if (aj) aj.addEventListener("click", () => {
+      if (state.jd.trim().length <= 10) { toast("JD 內容太短，貼完整一點再分析"); return; }
+      if (state.resumes.length === 0) { toast("請先上傳履歷，才能跑真的適配度分析"); return; }
+      state.jdSubmitted = true;
+      state.realFollowups = null;
+      state.realFit = null;
+      state.realFollowupsStatus = "pending";
+      saveState();
+      render();
+      syncResumeToTeam(state.resumes.find(r => r.primary) || state.resumes[0]);
+    });
     const uj = document.getElementById("useMyJd");
     if (uj) uj.addEventListener("click", () => {
-      state.jd = ALAN_JOB.jdText; saveState(); toast("🔓 已解鎖追問"); render();
+      state.jd = ALAN_JOB.jdText; state.jdSubmitted = true; saveState(); toast("🔓 已解鎖追問"); render();
     });
     const rj = document.getElementById("resetJd");
     if (rj) rj.addEventListener("click", () => {
       const hasScore = unlocked("jdMatch");
       state.jd = "";
+      state.jdSubmitted = false;
       state.followupAnswers = {};
       state.gapHitAnswers = {};
       state.prepAdopt = {};
