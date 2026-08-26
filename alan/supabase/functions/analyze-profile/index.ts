@@ -130,7 +130,6 @@ Deno.serve(async (req) => {
 
   try {
     const { resume_id, basics } = await req.json();
-    if (!resume_id) return json({ error: "resume_id 必填" }, 400);
     if (!basics) return json({ error: "basics 必填" }, 400);
 
     const supabase = createClient(
@@ -138,22 +137,36 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { data: resumeRow, error: readErr } = await supabase
-      .from("resumes")
-      .select("id, owner_id, text")
-      .eq("id", resume_id)
-      .single();
-    if (readErr || !resumeRow) return json({ error: "找不到這份履歷" }, 404);
+    // 履歷是選填——Basic 五題填完就該有真的職涯畫像，不用等使用者另外去履歷頁上傳。
+    // 有履歷全文就一起丟給 Claude，沒有的話只靠 basics 做判斷。
+    let resumeText = "";
+    let ownerId: string | null = null;
+    if (resume_id) {
+      const { data: resumeRow, error: readErr } = await supabase
+        .from("resumes")
+        .select("id, owner_id, text")
+        .eq("id", resume_id)
+        .single();
+      if (readErr || !resumeRow) return json({ error: "找不到這份履歷" }, 404);
+      resumeText = resumeRow.text || "";
+      ownerId = resumeRow.owner_id;
+    } else {
+      const authHeader = req.headers.get("authorization") || "";
+      const token = authHeader.replace(/^Bearer\s+/i, "");
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+      if (userErr || !userData?.user) return json({ error: "沒有登入資訊，無法產生分析" }, 401);
+      ownerId = userData.user.id;
+    }
 
     const { data: inserted, error: insertErr } = await supabase
       .from("profile_analyses")
-      .insert({ owner_id: resumeRow.owner_id, resume_id, basics, status: "pending" })
+      .insert({ owner_id: ownerId, resume_id: resume_id || null, basics, status: "pending" })
       .select("id")
       .single();
     if (insertErr) throw insertErr;
 
     try {
-      const result = await callClaude(basics, resumeRow.text);
+      const result = await callClaude(basics, resumeText);
       await supabase.from("profile_analyses").update({
         goal3: result.goal3,
         goal5: result.goal5,
