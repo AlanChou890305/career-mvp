@@ -92,6 +92,32 @@ function runHeuristics(background: string, jd: string) {
   return out.slice(0, 5);
 }
 
+// 適配度分析——一樣是規則引擎，不叫 Claude API。把 JD 拆成關鍵字，逐一比對
+// 履歷有沒有提到：完整出現算「符合」，履歷裡有相近的短詞算「證據薄」，
+// 完全沒有算「缺口」。
+function computeFit(background: string, jd: string) {
+  const bg = (background || "").trim();
+  const jdText = (jd || "").trim();
+  if (!bg || !jdText) return { strong: [], weak: [], miss: [] };
+
+  const keywords = Array.from(new Set(splitJdKeywords(jdText)));
+  const bgTokens = new Set(bg.match(/[一-龥]{2,4}/g) || []);
+
+  const strong: string[] = [];
+  const weak: string[] = [];
+  const miss: string[] = [];
+  keywords.forEach((k) => {
+    if (bg.includes(k)) {
+      strong.push(k);
+      return;
+    }
+    const hasPartialOverlap = Array.from(bgTokens).some((t) => k.includes(t) || t.includes(k));
+    if (hasPartialOverlap) weak.push(k); else miss.push(k);
+  });
+
+  return { strong: strong.slice(0, 8), weak: weak.slice(0, 8), miss: miss.slice(0, 8) };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
@@ -111,24 +137,33 @@ Deno.serve(async (req) => {
       .single();
     if (readErr || !row) return json({ error: "找不到這筆資料" }, 404);
 
-    const followups = runHeuristics(row.resumes?.text || "", row.jds?.text || "");
+    const bg = row.resumes?.text || "", jdText = row.jds?.text || "";
+    const followups = runHeuristics(bg, jdText);
+    const fit = computeFit(bg, jdText);
+    const fitScore = (() => {
+      const total = fit.strong.length + fit.weak.length + fit.miss.length;
+      if (!total) return null;
+      return Math.round(100 * (fit.strong.length * 1 + fit.weak.length * 0.4) / total);
+    })();
 
     if (!followups.length) {
       await supabase.from("submissions").update({
         followups: [],
         followups_status: "error",
         followups_error: "規則引擎沒找到可以追問的點（履歷/JD 內容太短或太相似），這是本機規則版的限制，接上 Claude API 後會好很多。",
+        fit_score: fitScore, fit_strong: fit.strong, fit_weak: fit.weak, fit_miss: fit.miss,
       }).eq("id", submission_id);
-      return json({ error: "規則引擎沒找到可以追問的點" }, 200);
+      return json({ error: "規則引擎沒找到可以追問的點", fit }, 200);
     }
 
     await supabase.from("submissions").update({
       followups,
       followups_status: "done",
       followups_error: null,
+      fit_score: fitScore, fit_strong: fit.strong, fit_weak: fit.weak, fit_miss: fit.miss,
     }).eq("id", submission_id);
 
-    return json({ followups, engine: "heuristics-v1 (本機規則引擎，非 AI)" });
+    return json({ followups, fit, engine: "heuristics-v1 (本機規則引擎，非 AI)" });
   } catch (e) {
     console.error(e);
     return json({ error: String((e as Error)?.message || e) }, 500);

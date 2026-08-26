@@ -126,6 +126,9 @@ async function fetchRealFollowups(submissionId) {
       why: f.why,
     }));
     state.realFollowupsStatus = "done";
+    if (data.fit) {
+      state.realFit = { fitStrong: data.fit.strong || [], fitWeak: data.fit.weak || [], fitMiss: data.fit.miss || [] };
+    }
   } catch (e) {
     console.warn("跑追問分析失敗，先顯示示範追問題目", e);
     state.realFollowupsStatus = "error";
@@ -239,6 +242,7 @@ function defaultState() {
     actualLockedAt: null,
     realFollowups: null,       // 讀你貼的履歷/JD 跑出來的追問（generate-followups），有值時取代示範資料
     realFollowupsStatus: null, // null=還沒跑 | "pending" | "done" | "error"
+    realFit: null,              // 讀你貼的履歷/JD 跑出來的適配度分析（fitStrong/fitWeak/fitMiss），有值時取代示範資料
     // 內部驗證畫面用，跟一般使用者體驗無關
     validationPersonaId: realPersonas()[0].id,
     validationRevealed: false,
@@ -550,9 +554,15 @@ function currentFollowups() {
   return (state.realFollowups && state.realFollowups.length) ? state.realFollowups : ALAN_JOB.diagnosis.followups;
 }
 
+// 同 currentFollowups()：有真的適配度分析結果就用真的，否則退回示範資料。
+function currentFit() {
+  if (state.realFit) return state.realFit;
+  return { fitStrong: ALAN_JOB.fitStrong, fitWeak: ALAN_JOB.fitWeak, fitMiss: ALAN_JOB.fitMiss };
+}
+
 function lv(x){ return x==="強"?100:x==="中"?60:30 }
-function jdMatchScore(J){
-  const strong = J.fitStrong.length, weak = J.fitWeak.length, miss = J.fitMiss.length;
+function jdMatchScore(fit){
+  const strong = fit.fitStrong.length, weak = fit.fitWeak.length, miss = fit.fitMiss.length;
   const total = strong + weak + miss;
   if (!total) return 0;
   return Math.round(100 * (strong * 1 + weak * 0.4) / total);
@@ -567,10 +577,10 @@ function upsertCurrentJdAnalysis() {
     jd: state.jd,
     company: J.company,
     position: J.position,
-    score: unlocked("jdMatch") ? jdMatchScore(J) : null,
+    score: unlocked("jdMatch") ? jdMatchScore(currentFit()) : null,
     followupCount: answeredFollowupIds().length,
     followups: currentFollowups().map(f => ({ q: f.q, why: f.why, answer: state.followupAnswers[f.id] || "" })),
-    fitStrong: J.fitStrong, fitWeak: J.fitWeak, fitMiss: J.fitMiss,
+    fitStrong: currentFit().fitStrong, fitWeak: currentFit().fitWeak, fitMiss: currentFit().fitMiss,
     hardest: J.hardest,
     questions: J.questions,
     prep: J.prep.map(p => Object.assign({}, p, { planned: !!prepSt(p.id).planned })),
@@ -956,14 +966,14 @@ function renderJob() {
       </div>
 
       <div class="card">
-        <div class="row between"><h3 style="margin:0">JD 匹配分數</h3><span class="chip chip-real">${jdMatchScore(J)}</span></div>
+        <div class="row between"><h3 style="margin:0">JD 匹配分數</h3><span class="chip chip-real">${jdMatchScore(currentFit())}</span></div>
         <div class="sub">算法：符合每項記 1 分、證據薄每項記 0.4 分、缺口記 0 分，除以三類項目總數。履歷調整後回這裡看分數是否上升。</div>
       </div>
 
       ${jobSection("fit", "你跟這份 JD 的落差", `
-        <div class="fitrow"><span class="tg tg-強">符合</span><div>${J.fitStrong.map(x=>`<span class="pill ok">${x}</span>`).join("")}</div></div>
-        <div class="fitrow"><span class="tg tg-中">證據薄</span><div>${J.fitWeak.map(x=>`<span class="pill mid">${x}</span>`).join("")}</div></div>
-        <div class="fitrow"><span class="tg tg-弱">缺口</span><div>${J.fitMiss.map(x=>`<span class="pill bad">${x}</span>`).join("")}</div></div>
+        <div class="fitrow"><span class="tg tg-強">符合</span><div>${currentFit().fitStrong.map(x=>`<span class="pill ok">${x}</span>`).join("")}</div></div>
+        <div class="fitrow"><span class="tg tg-中">證據薄</span><div>${currentFit().fitWeak.map(x=>`<span class="pill mid">${x}</span>`).join("")}</div></div>
+        <div class="fitrow"><span class="tg tg-弱">缺口</span><div>${currentFit().fitMiss.map(x=>`<span class="pill bad">${x}</span>`).join("")}</div></div>
       `)}
 
       ${jobSection("prep", `面試前準備 <span class="chip chip-live">${planned}/${J.prep.length} 打算做</span>`, `
