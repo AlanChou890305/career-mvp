@@ -109,7 +109,7 @@ async function syncResumeToTeam(resume) {
 // 拿剛存進 Supabase 的履歷 + 這個人的 basics，跑 analyze-profile（真的叫 Claude API），
 // 結果取代主頁上原本寫死的 ALAN.dash 示範資料（職涯目標/工作類型/技能雷達/資產短板）。
 // 失敗時維持示範資料，不擋畫面。
-async function fetchRealProfile(resumeId) {
+async function fetchRealProfile(resumeId = null) {
   state.realProfileStatus = "pending";
   saveState();
   try {
@@ -574,7 +574,13 @@ function wireOnboarding() {
     saveState();
     if (n < 4) { state.obStep = n + 1; render(); return; }
     if (state.obReturnTo) { const bk = state.obReturnTo; state.obReturnTo = null; state.tab = bk; }
-    else { state.onboarded = true; state.tab = "home"; }
+    else {
+      state.onboarded = true; state.tab = "home";
+      // Basic 五題填完就該有真的職涯畫像，不用等使用者另外去履歷頁上傳履歷才觸發分析。
+      // 這裡的 resumes 是本機資料，還沒同步到團隊 Supabase，所以先不帶 resume_id，
+      // 光靠 basics 跑一次分析；之後真的上傳履歷會再跑一次、疊代成更準的版本。
+      fetchRealProfile(null);
+    }
     render();
   });
 }
@@ -639,8 +645,9 @@ function demoContentNote() {
 
 // 同 currentFollowups()：有真的職涯畫像分析（analyze-profile）就用真的，否則退回示範資料。
 function currentProfile() {
-  if (state.realProfile) return state.realProfile;
-  return ALAN.dash;
+  const p = state.realProfile;
+  const ok = p && p.ideal?.length && p.target?.length && Array.isArray(p.accept) && p.radar?.length && p.capabilities?.length;
+  return (state.realProfileStatus === "done" && ok) ? p : ALAN.dash;
 }
 
 function lv(x){ return x==="強"?100:x==="中"?60:30 }
@@ -770,7 +777,7 @@ function renderHome() {
         <h3>技能能力方向</h3>
         <div class="sub">面積來自你的實際成果證據強度，不是自評</div>
         ${radar(D.radar)}
-        ${D.capabilities.map(c=>`
+        ${(D.capabilities && D.capabilities.length ? D.capabilities : ALAN.capabilities).map(c=>`
           <div class="cap">
             <div class="row between"><span class="cn">${c.name}</span><span class="tg tg-${c.level}">${c.level}</span></div>
             <div class="bar"><i style="width:${lv(c.level)}%" class="b-${c.level}"></i></div>
