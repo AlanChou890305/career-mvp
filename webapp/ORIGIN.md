@@ -22,7 +22,7 @@ A/B/C 基準線與真實面試閉環，不在介面。
 ## 打開方式（沿用 Sunny 的）
 
 ```bash
-cd career-mvp/alan/webapp
+cd career-mvp/webapp
 python3 -m http.server 8712
 ```
 
