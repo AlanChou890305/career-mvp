@@ -38,3 +38,6 @@ tmp/
 alan/private/
 alan/webapp/alan-data.js
 alan/webapp/demo-data.json
+webapp/alan-data.js
+webapp/demo-data.json
+webapp/demo-data.json.bak
