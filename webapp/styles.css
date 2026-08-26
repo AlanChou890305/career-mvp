@@ -41,7 +41,7 @@
   --line:var(--sep-o);--orange:var(--amber);--pink:#FF2D55;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:radial-gradient(1200px 700px at 50% -10%,#2f3540,#171a1f 70%);color:var(--label);
+body{margin:0;background:#171a1f;color:var(--label);
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
   font-size:var(--fs-body);line-height:1.55;-webkit-font-smoothing:antialiased}
 
@@ -178,6 +178,12 @@ body{margin:0;background:radial-gradient(1200px 700px at 50% -10%,#2f3540,#171a1
   margin-bottom:var(--sp-3);box-shadow:none}
 .card h3{margin:0 0 var(--sp-2);font-size:var(--fs-head);font-weight:600;letter-spacing:-.01em;
   display:flex;align-items:center;gap:var(--sp-2)}
+
+.acctcard{display:flex;align-items:center;gap:var(--sp-3)}
+.acctcard .avatar{flex:0 0 auto;width:44px;height:44px;border-radius:50%;
+  background:var(--accent);color:#fff;font-size:var(--fs-head);font-weight:600;
+  display:flex;align-items:center;justify-content:center}
+.acctcard .acctname{font-size:var(--fs-head);font-weight:600;letter-spacing:-.01em}
 
 .hero{background:var(--card);color:var(--label);border:0}
 .hero .sub{color:var(--label2)}
@@ -359,6 +365,8 @@ code{background:var(--fill);border-radius:var(--sp-1);padding:1px var(--sp-1);
 .dn{font-weight:600;font-size:var(--fs-head);display:flex;align-items:center;gap:var(--sp-2)}
 .dn .idx{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:var(--fs-cap);
   font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
+.dn .dt{flex:1}
+.dn .chev{flex:none;color:var(--label2);font-size:var(--fs-head)}
 .dsub{font-size:var(--fs-cap);color:var(--label2);margin:2px 0 var(--sp-2) 30px}
 .kw{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-cap);background:var(--fill);
   border-radius:var(--r-ctl);padding:var(--sp-2);color:var(--label2);margin-bottom:var(--sp-2)}
@@ -478,6 +486,10 @@ code{background:var(--fill);border-radius:var(--sp-1);padding:1px var(--sp-1);
 .bigta{width:100%;border:0;border-radius:var(--r-card);padding:var(--sp-4);font:inherit;font-size:var(--fs-body);
   line-height:1.6;min-height:150px;resize:vertical;background:var(--card);color:var(--label)}
 .bigta:focus{outline:0;box-shadow:0 0 0 3px var(--accent-bg)}
+.bigta::-webkit-scrollbar{width:6px}
+.bigta::-webkit-scrollbar-thumb{background:var(--sep);border-radius:var(--r-pill)}
+.bigta::-webkit-scrollbar-track{background:transparent}
+.bigta.fulltext{background:var(--fill2)}
 .exlabel{font-size:var(--fs-cap);color:var(--label2);font-weight:400;margin:var(--sp-3) 0 var(--sp-2)}
 .ex{border:0;border-radius:var(--r-ctl);padding:var(--sp-3);font-size:var(--fs-foot);color:var(--label2);
   line-height:1.6;margin-bottom:var(--sp-2);cursor:pointer;background:var(--fill2)}
@@ -543,7 +555,7 @@ code{background:var(--fill);border-radius:var(--sp-1);padding:1px var(--sp-1);
   font-size:var(--fs-foot);line-height:1.6;color:var(--accent-d);margin-top:var(--sp-3)}
 
 /* ===== 設定 ===== */
-.swrow{display:flex;gap:var(--sp-4);align-items:flex-start;justify-content:space-between}
+.swrow{display:flex;gap:var(--sp-4);align-items:center;justify-content:space-between}
 .sn{font-weight:400;font-size:var(--fs-body)}
 .sw{width:51px;height:31px;border-radius:var(--r-pill);background:var(--fill);border:0;position:relative;
   cursor:pointer;flex:none;transition:background .2s;margin-top:2px}

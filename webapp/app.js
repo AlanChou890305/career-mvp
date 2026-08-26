@@ -19,7 +19,6 @@ const STORAGE_KEY = "alan_mvp_demo_v1";
 // 這是背景同步，失敗不影響本機功能——本機 localStorage 永遠是主資料來源。
 const TEAM_SUPABASE_URL = "https://pbwntmnzjleqgsdmsitb.supabase.co";
 const TEAM_SUPABASE_KEY = "sb_publishable_lX2BwDcnPDsDBGT4V8MsWg_dmzQUto5";
-const TEAM_MEMBERS = ["Alan", "Berry", "Sunny"];
 
 async function teamSb(path, opts = {}) {
   const res = await fetch(`${TEAM_SUPABASE_URL}/rest/v1/${path}`, {
@@ -130,9 +129,7 @@ const LOCKS = [
 
 function defaultState() {
   return {
-    member: "",
-    memberPick: "",
-    memberOtherName: "",
+    member: "Demo",
     onboarded: false,
     obStep: 0,
     obReturnTo: null,
@@ -140,8 +137,11 @@ function defaultState() {
     basics: { openness: "", goal: "", skills: [], curTitle: "", curCat: "", tgtTitle: "", tgtCat: "", industries: [] },
     resume: "",
     resumes: [],          // 最多 3 份，選填
-    openResume: null,
+    viewingResumeId: null,
+    editingLabelId: null,
+    addingResume: false,
     showFitMore: false,
+    openDirIdx: null,     // 適配職缺方向建議：展開中的方向 index（accordion，null=全收合）
     demoMask: true,
     afterAppId: null,      // 示範模式：畫面上遮蔽個資與公司名
     draftLabel: "",
@@ -153,6 +153,9 @@ function defaultState() {
     jobFlowActive: false,  // 是否已進入「貼 JD →追問→分析」流程；false 時顯示職缺列表頁
     currentJdId: null,     // 目前這份 JD 分析在 jdAnalyses 裡對應的 id，一旦有分數就自動存檔更新
     applications: [],
+    addingApp: false,
+    analysisOpenSection: null,
+    jobOpenSection: null,
     resumeVersions: [],
     recAdoption: {},
     planAdopt: {},     // 方向型建議：{p1:{done:true}}
@@ -194,8 +197,17 @@ function applyData(data) {
 
 async function loadData() {
   if (window.__DEMO_DATA__) { applyData(window.__DEMO_DATA__); return; }
-  const res = await fetch("demo-data.json");
-  if (!res.ok) throw new Error("demo-data.json 讀不到，本機請用 serve.sh 開伺服器，不要直接開檔案");
+  try {
+    const res = await fetch("demo-data.json");
+    if (!res.ok) throw new Error("demo-data.json 讀不到");
+    applyData(await res.json());
+    return;
+  } catch (e) {
+    // demo-data.json 是個資，不進版控，正式網址上讀不到是預期行為，
+    // fallback 讀 demo-data.sample.json（假資料，會進版控，正式網址也會顯示）。
+  }
+  const res = await fetch("demo-data.sample.json");
+  if (!res.ok) throw new Error("demo-data.json 和 demo-data.sample.json 都讀不到，本機請用 serve.sh 開伺服器，不要直接開檔案");
   applyData(await res.json());
 }
 function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; }
@@ -234,46 +246,6 @@ function basicsDone() {
 function stepOk(n) {
   const b = state.basics;
   return [!!b.openness, b.goal.trim().length > 5, b.skills.length > 0, !!b.tgtTitle.trim(), b.industries.length > 0][n];
-}
-
-function renderMemberGate() {
-  const other = state.memberOtherName;
-  return `
-    <div class="view obwrap">
-      <div class="stepno">開始之前</div>
-      <div class="qtitle">你是誰？</div>
-      <div class="qhint">career-mvp 三人小組共用這支 app。選你自己的名字——履歷上傳時會同步進團隊共用的資料庫，方便互相對照。這個選擇存在這台裝置上，之後可以在「設定」分頁改。</div>
-      <div>${TEAM_MEMBERS.map(m => `
-        <button class="optcard ${state.memberOtherName === "" && state.memberPick === m ? "sel" : ""}" data-memberpick="${m}"
-          style="width:100%;text-align:left;cursor:pointer;font-family:inherit;display:block">
-          <div class="th" style="margin:0;font-size:var(--fs-body);color:${state.memberPick === m ? "var(--accent-d)" : "var(--ink)"}">
-            ${state.memberPick === m ? "◉" : "○"} ${m}</div>
-        </button>`).join("")}
-        <button class="optcard ${state.memberPick === "__other" ? "sel" : ""}" data-memberpick="__other"
-          style="width:100%;text-align:left;cursor:pointer;font-family:inherit;display:block">
-          <div class="th" style="margin:0;font-size:var(--fs-body);color:${state.memberPick === "__other" ? "var(--accent-d)" : "var(--ink)"}">
-            ${state.memberPick === "__other" ? "◉" : "○"} 其他…</div>
-        </button>
-        ${state.memberPick === "__other" ? `<input class="field" id="memberOtherIn" placeholder="輸入名字" value="${other}" style="margin-top:8px">` : ""}
-      </div>
-      <div class="obfoot"><button class="btn" id="memberContinueBtn">開始使用 →</button></div>
-    </div>`;
-}
-
-function wireMemberGate() {
-  const screen = document.getElementById("screen");
-  screen.querySelectorAll("[data-memberpick]").forEach((btn) => {
-    btn.addEventListener("click", () => { state.memberPick = btn.dataset.memberpick; render(); });
-  });
-  const oi = document.getElementById("memberOtherIn");
-  if (oi) oi.addEventListener("input", () => { state.memberOtherName = oi.value; });
-  document.getElementById("memberContinueBtn").addEventListener("click", () => {
-    const name = state.memberPick === "__other" ? state.memberOtherName.trim() : state.memberPick;
-    if (!name) { toast("先選一個名字"); return; }
-    state.member = name;
-    saveState();
-    render();
-  });
 }
 
 function obShell(n, title, hint, body, wide) {
@@ -508,13 +480,19 @@ function upsertCurrentJdAnalysis() {
   if (!state.jd.trim()) return;
   if (!state.currentJdId) state.currentJdId = "jd" + Date.now();
   const prev = state.jdAnalyses.find(x => x.id === state.currentJdId);
+  const J = ALAN_JOB, D = J.diagnosis;
   const rec = {
     id: state.currentJdId,
     jd: state.jd,
-    company: ALAN_JOB.company,
-    position: ALAN_JOB.position,
-    score: unlocked("jdMatch") ? jdMatchScore(ALAN_JOB) : null,
+    company: J.company,
+    position: J.position,
+    score: unlocked("jdMatch") ? jdMatchScore(J) : null,
     followupCount: answeredFollowupIds().length,
+    followups: D.followups.map(f => ({ q: f.q, why: f.why, answer: state.followupAnswers[f.id] || "" })),
+    fitStrong: J.fitStrong, fitWeak: J.fitWeak, fitMiss: J.fitMiss,
+    hardest: J.hardest,
+    questions: J.questions,
+    prep: J.prep.map(p => Object.assign({}, p, { planned: !!prepSt(p.id).planned })),
     createdAtTs: prev ? prev.createdAtTs : Date.now(),
     createdAt: prev ? prev.createdAt : new Date().toLocaleString("zh-TW", { hour12: false }),
   };
@@ -607,28 +585,6 @@ function renderHome() {
         <div class="tri"><span class="tl2">可接受</span><div>${D.accept.map(x=>`<span class="pill pill-lg">${x}</span>`).join("")}</div></div>
       </div>
 
-      ${unlocked("fitAdvice") ? `
-      <div class="card">
-        <div class="row between"><h3 style="margin:0">適配職缺方向建議</h3><span class="chip chip-real">已解鎖</span></div>
-        ${ALAN.directions.map((d,i)=>`<div class="dir dir-compact">
-          <div class="dn"><span class="idx">${i+1}</span>${d.t}</div>
-          <div class="dsub">${d.sub}</div>
-          <div class="kw">${d.kw}</div>
-          <div class="sub"><b>為什麼是你</b>　${d.why}</div>
-          <div class="sub"><b>最缺的一塊</b>　${d.miss}</div>
-        </div>`).join("")}
-        <button class="linklike" id="toggleFitMore" type="button" style="margin-top:2px">${state.showFitMore ? "收合資產與短板 ↑" : "看你可能沒發現的資產與短板 →"}</button>
-        ${state.showFitMore ? `
-        <h3 style="margin-top:14px">你可能沒發現的資產</h3>
-        ${ALAN.assets.map(a=>`<div class="ast"><div class="cn">${a.t}</div><div class="sub">${a.d}</div></div>`).join("")}
-        <h3 style="margin-top:14px">短板</h3>
-        ${ALAN.gaps.map(g=>`<div class="ast">
-          <div class="row between"><span class="cn">${g.t}</span><span class="tg ${g.fix==="補得起來"?"tg-fix":"tg-avoid"}">${g.fix}</span></div>
-          <div class="sub">${g.d}</div></div>`).join("")}
-        ` : ``}
-      </div>
-      ` : lockCard(LOCKS[0])}
-
       <div class="card">
         <h3>技能能力方向</h3>
         <div class="sub">面積來自你的實際成果證據強度，不是自評</div>
@@ -639,26 +595,100 @@ function renderHome() {
             <div class="bar"><i style="width:${lv(c.level)}%" class="b-${c.level}"></i></div>
           </div>`).join("")}
       </div>
+
+      ${unlocked("fitAdvice") ? `
+      <div class="card">
+        <div class="row between"><h3 style="margin:0">適配職缺方向建議</h3><span class="chip chip-real">已解鎖</span></div>
+        ${ALAN.directions.map((d,i)=>`<div class="dir dir-compact" data-dirtoggle="${i}" style="cursor:pointer">
+          <div class="dn">
+            <span class="dt">${d.t}</span>
+            <span class="chev">${state.openDirIdx === i ? "︿" : "﹀"}</span>
+          </div>
+          ${state.openDirIdx === i ? `
+          <div class="sub"><b>為什麼是你</b>　${d.why}</div>
+          ` : ``}
+        </div>`).join("")}
+        <button class="linklike" id="toggleFitMore" type="button" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--fill)">${state.showFitMore ? "收合資產與短板 ↑" : "看你可能沒發現的資產與短板 →"}</button>
+        ${state.showFitMore ? `
+        <h3 style="margin-top:14px">你可能沒發現的資產</h3>
+        ${ALAN.assets.map(a=>`<div class="ast"><div class="cn">${a.t}</div><div class="sub">${a.d}</div></div>`).join("")}
+        <h3 style="margin-top:14px">短板</h3>
+        ${ALAN.gaps.map(g=>`<div class="ast">
+          <div class="row between"><span class="cn">${g.t}</span><span class="tg ${g.fix==="補得起來"?"tg-fix":"tg-avoid"}">${g.fix}</span></div>
+          <div class="sub">${g.d}</div></div>`).join("")}
+        ` : ``}
+      </div>
+      ` : lockCard(LOCKS[0])}
     </div>`;
 }
 
 const MAX_RESUMES = 3;
 
-function renderResume() {
-  const rs = state.resumes, full = rs.length >= MAX_RESUMES;
-  const cards = rs.map((r, i) => `
-    <div class="rcard ${r.primary ? "pri" : ""}">
+function renderResumeView(r) {
+  return `<div class="view">
+    <button class="backlink" id="backFromResumeView">← 回到履歷列表</button>
+    <div class="h1">${r.primary ? `<span class="pritag">主要</span>` : ""}履歷</div>
+    <div class="card">
       <div class="row between">
-        <div class="rttl">${r.primary ? `<span class="pritag">主要</span>` : ""}${r.label}</div>
+        ${state.editingLabelId === r.id
+          ? `<input class="field" data-renameres="${r.id}" placeholder="版本名稱" value="${r.label}" style="flex:1;margin:0" autofocus>`
+          : `<div class="acctname" style="flex:1">${r.label}</div>`}
         <div style="display:flex;gap:4px">
+          <button class="iconbtn" data-editlabel="${r.id}" title="改名">${state.editingLabelId === r.id ? "✓" : "✏️"}</button>
           ${r.primary ? "" : `<button class="iconbtn" data-setpri="${r.id}" title="設為主要">☆</button>`}
           <button class="iconbtn" data-delres="${r.id}">🗑️</button>
         </div>
       </div>
-      <div class="rmeta">${r.text.length.toLocaleString()} 字 · 加入於 ${r.addedAt}</div>
-      <div class="rprev">${r.text.slice(0, 90).replace(/\n/g, " ")}…</div>
-      <button class="linklike" data-viewres="${r.id}" style="margin:6px 0 0">${state.openResume === r.id ? "收合" : "展開全文"}</button>
-      ${state.openResume === r.id ? `<textarea data-editres="${r.id}" style="margin-top:8px">${r.text}</textarea>` : ""}
+      <div class="sub" style="margin-top:6px">加入於 ${r.addedAt}</div>
+    </div>
+    <div class="card">
+      <h3>全文（可編輯）</h3>
+      <div class="sub">以下為系統從你上傳的檔案擷取的純文字，若排版跑掉可直接修改</div>
+      <textarea class="bigta fulltext" data-editres="${r.id}" style="min-height:240px">${r.text}</textarea>
+    </div>
+  </div>`;
+}
+
+function renderAddResumeView() {
+  return `
+    <div class="view">
+      <button class="backlink" id="backFromAddResume">← 回到履歷列表</button>
+      <div class="h1">新增履歷</div>
+      <div class="card">
+        <div class="upl" id="uplBox">
+          <input type="file" id="resFile" accept=".pdf,.txt,.md" hidden>
+          <div class="ui2">📎</div>
+          <div class="ut">上傳 PDF 履歷</div>
+          <div class="us">或直接貼上文字</div>
+        </div>
+        <input class="field" id="resLabel" placeholder="版本名稱（例：主力版、產品經理版）" value="${state.draftLabel || ""}">
+        <textarea class="field" id="resText" placeholder="貼上履歷全文，或先上傳 PDF">${state.draftText || ""}</textarea>
+        <button class="btn block" id="addResBtn" style="margin-top:10px">＋ 新增履歷</button>
+        ${ALAN ? `<button class="linklike" id="useMyResume" type="button">帶入示範履歷 →</button>` : ""}
+      </div>
+    </div>`;
+}
+
+function renderResume() {
+  if (state.addingResume) return renderAddResumeView();
+
+  if (state.viewingResumeId) {
+    const r = state.resumes.find(x => x.id === state.viewingResumeId);
+    if (r) return renderResumeView(r);
+    state.viewingResumeId = null;
+  }
+
+  const rs = state.resumes, full = rs.length >= MAX_RESUMES;
+  const rows = rs.map((r) => `
+    <div class="rec">
+      <div class="row between" data-viewres="${r.id}" style="cursor:pointer;gap:8px">
+        <span class="rt">${r.primary ? `<span class="pritag">主要</span>` : ""}${r.label}</span>
+        <div style="display:flex;align-items:center;gap:4px;flex:none">
+          ${r.primary ? "" : `<button class="iconbtn" data-setpri="${r.id}" title="設為主要">☆</button>`}
+          <button class="iconbtn" data-delres="${r.id}">🗑️</button>
+        </div>
+      </div>
+      <div class="sub" data-viewres="${r.id}" style="cursor:pointer;margin:0">加入於 ${r.addedAt}</div>
     </div>`).join("");
 
   return `
@@ -672,7 +702,7 @@ function renderResume() {
           <span class="chip ${rs.length ? "chip-real" : "chip-mock"}">${rs.length}/${MAX_RESUMES}</span>
         </div>
         ${rs.length
-          ? cards
+          ? rows
           : `<div class="emptybox">
                <div class="ei">📄</div>
                <div class="et">還沒有履歷</div>
@@ -680,41 +710,14 @@ function renderResume() {
                  <b>適配職缺方向建議</b>與<b>履歷調整方向</b>。</div>
              </div>`}
 
-        ${full ? `<div class="mock-note" style="margin-top:12px">已達 ${MAX_RESUMES} 份上限，要新增請先刪掉一份。</div>` : `
-        <h3 style="margin-top:16px">新增一份</h3>
-        <div class="upl" id="uplBox">
-          <input type="file" id="resFile" accept=".pdf,.txt,.md" hidden>
-          <div class="ui2">📎</div>
-          <div class="ut">上傳 PDF 履歷</div>
-          <div class="us">或直接貼上文字</div>
-        </div>
-        <input class="field" id="resLabel" placeholder="版本名稱（例：主力版、產品經理版）" value="${state.draftLabel || ""}">
-        <textarea class="field" id="resText" placeholder="貼上履歷全文，或先上傳 PDF">${state.draftText || ""}</textarea>
-        <button class="btn block" id="addResBtn" style="margin-top:10px">＋ 新增履歷</button>
-        ${ALAN ? `<button class="linklike" id="useMyResume" type="button">帶入示範履歷 →</button>` : ""}`}
+        ${full
+          ? `<div class="mock-note" style="margin-top:12px">已達 ${MAX_RESUMES} 份上限，要新增請先刪掉一份。</div>`
+          : `<button class="btn block" id="openAddResume" style="margin-top:12px">＋ 新增履歷</button>`}
       </div>
     </div>`;
 }
 
 function prepSt(id){ return state.prepAdopt[id]||{} }
-
-function renderJdList() {
-  const items = state.jdAnalyses.filter(x => x.id !== state.currentJdId).sort((a, b) => b.createdAtTs - a.createdAtTs);
-  if (!items.length) return "";
-  return `<div class="card">
-    <h3>歷史分析紀錄</h3>
-    <div class="sub">存過的每一次分析，點卡片回顧當時的 JD 全文與分數。</div>
-    ${items.map(r => `
-      <div class="rec">
-        <div class="row between" data-viewjd="${r.id}" style="cursor:pointer">
-          <span class="rt">${r.company} · ${r.position}</span>
-          <span class="chip chip-real">${r.score} 分</span>
-        </div>
-        <div class="sub" data-viewjd="${r.id}" style="cursor:pointer">${r.createdAt}　已答 ${r.followupCount} 題追問</div>
-        <button class="linklike" data-delanalysis="${r.id}" type="button" style="margin-top:4px">刪除這筆</button>
-      </div>`).join("")}
-  </div>`;
-}
 
 function renderJdListingPage() {
   const items = state.jdAnalyses.slice().sort((a, b) => b.createdAtTs - a.createdAtTs);
@@ -722,9 +725,6 @@ function renderJdListingPage() {
     <div class="view">
       <div class="h1">職缺匹配度分析</div>
       <p class="sub">貼上一份 JD，AI 先指出落差、追問幾個問題，回答之後才會給匹配分數與面試前準備。每次分析都會存成一筆紀錄——點下面的紀錄可以繼續填答，或回顧存檔當時的內容。</p>
-      <div class="card">
-        <button class="btn block" id="startJdAnalysis">開始新的分析 →</button>
-      </div>
       <div class="card">
         <h3>分析紀錄</h3>
         ${items.length ? `
@@ -735,34 +735,92 @@ function renderJdListingPage() {
             ? `<span class="chip chip-mock">進行中</span>`
             : `<span class="chip chip-real">${r.score} 分</span>`;
           return `
-          <div class="rec">
-            <div class="row between" data-viewjd="${r.id}" style="cursor:pointer;gap:8px">
+          <div class="rec" data-viewjd="${r.id}" style="cursor:pointer">
+            <div class="row between" style="gap:8px">
               <span class="rt">${r.company} · ${r.position}</span>
               <div style="display:flex;align-items:center;gap:4px;flex:none">
                 ${scoreChip}
                 <button class="iconbtn" data-delanalysis="${r.id}" type="button" title="刪除這筆">🗑</button>
               </div>
             </div>
-            <div class="sub" data-viewjd="${r.id}" style="cursor:pointer;margin:0">${r.createdAt}　已答 ${r.followupCount} 題追問${isCurrent ? "　· 目前這筆" : ""}</div>
+            <div class="sub" style="margin:0">${r.createdAt}　已答 ${r.followupCount} 題追問${isCurrent ? "　· 目前這筆" : ""}</div>
           </div>`;
         }).join("")}
-        ` : `<div class="emptybox"><div class="ei">🔎</div><div class="et">還沒有分析紀錄</div><div class="sub" style="margin:4px 0 0">點上面的按鈕開始第一筆。</div></div>`}
+        ` : `<div class="emptybox"><div class="ei">🔎</div><div class="et">還沒有分析紀錄</div><div class="sub" style="margin:4px 0 0">按下面的按鈕開始第一筆。</div></div>`}
+        <button class="btn block" id="startJdAnalysis" style="margin-top:12px">開始新的分析 →</button>
       </div>
     </div>`;
 }
 
+function collapsible(attr, openKey, key, title, bodyHtml) {
+  const open = openKey === key;
+  return `<div class="card">
+    <div class="row between" data-${attr}="${key}" style="cursor:pointer">
+      <h3 style="margin:0">${title}</h3>
+      <span class="chev">${open ? "︿" : "﹀"}</span>
+    </div>
+    ${open ? bodyHtml : ""}
+  </div>`;
+}
+
+function anaSection(key, title, bodyHtml) {
+  return collapsible("anasec", state.analysisOpenSection, key, title, bodyHtml);
+}
+
+function jobSection(key, title, bodyHtml) {
+  return collapsible("jobsec", state.jobOpenSection, key, title, bodyHtml);
+}
+
 function renderAnalysisView(r) {
+  const planned = (r.prep || []).filter(p => p.planned).length;
   return `<div class="view">
     <button class="backlink" id="backFromAnalysisView">← 回到職缺</button>
     <div class="h1">${r.company} · ${r.position}</div>
     <div class="card">
-      <div class="row between"><h3 style="margin:0">JD 匹配分數（存檔時）</h3><span class="chip chip-real">${r.score}</span></div>
+      <div class="row between"><h3 style="margin:0">JD 匹配分數（存檔時）</h3>${r.score === null ? `<span class="chip chip-mock">進行中</span>` : `<span class="chip chip-real">${r.score}</span>`}</div>
       <div class="sub">存於 ${r.createdAt}，當時已答 ${r.followupCount} 題追問。這個分數是存檔當下凍結的，之後在「職缺」分頁的操作不會改到它。</div>
     </div>
-    <div class="card">
-      <h3>當時貼的 JD 全文</h3>
-      <textarea disabled style="min-height:160px">${r.jd}</textarea>
-    </div>
+
+    ${anaSection("jd", "當時貼的 JD 全文", `<textarea disabled style="min-height:160px">${r.jd}</textarea>`)}
+
+    ${r.followups && r.followups.length ? anaSection("followups", "AI 的進階問題（存檔時的回答）", `
+      ${r.followups.map(f => `
+        <div class="rec ${f.answer.trim() ? "on" : ""}">
+          <div class="rt">${f.q}</div>
+          <div class="sub"><b>為什麼問這題</b>　${f.why}</div>
+          ${f.answer.trim()
+            ? `<div class="sub" style="margin-top:6px"><b>當時的回答</b>　${f.answer}</div>`
+            : `<div class="sub" style="margin-top:6px">（當時未回答）</div>`}
+        </div>`).join("")}
+    `) : ""}
+
+    ${r.score !== null && r.fitStrong ? `
+    ${anaSection("fit", "你跟這份 JD 的落差（存檔時）", `
+      <div class="fitrow"><span class="tg tg-強">符合</span><div>${r.fitStrong.map(x=>`<span class="pill ok">${x}</span>`).join("")}</div></div>
+      <div class="fitrow"><span class="tg tg-中">證據薄</span><div>${r.fitWeak.map(x=>`<span class="pill mid">${x}</span>`).join("")}</div></div>
+      <div class="fitrow"><span class="tg tg-弱">缺口</span><div>${r.fitMiss.map(x=>`<span class="pill bad">${x}</span>`).join("")}</div></div>
+    `)}
+
+    ${anaSection("prep", `面試前準備（存檔時） <span class="chip chip-live">${planned}/${r.prep.length} 打算做</span>`, `
+      ${r.prep.map(p => `
+        <div class="rec ${p.planned ? "on" : ""}">
+          <div class="rt">${p.planned ? "☑" : "☐"} ${p.t}</div>
+          <div class="rm"><span class="chip">⏱ ${p.time}</span></div>
+          <div class="sub"><b>完成條件</b>　${p.done}</div>
+          <div class="sub"><b>對應缺口</b>　${p.gap}</div>
+        </div>`).join("")}
+    `)}
+
+    ${anaSection("hardest", "最可能被問倒的一題（存檔時）", `
+      <div class="hardq">${r.hardest.q}</div>
+      <div class="sub" style="margin:8px 0"><b>為什麼</b>　${r.hardest.why}</div>
+      ${r.hardest.how.map(h=>`<div class="sub" style="margin-bottom:6px">${h}</div>`).join("")}
+    `)}
+
+    ${anaSection("questions", "AI 猜這場會問的 8 題（存檔時）", `
+      ${r.questions.map((q,i)=>`<div class="qq"><span class="n">${i+1}</span><div>${q}</div></div>`).join("")}
+    `)}
+    ` : ""}
   </div>`;
 }
 
@@ -788,7 +846,6 @@ function renderJob() {
         <textarea id="jdInput" placeholder="貼上職缺描述…">${state.jd}</textarea>
         <button class="linklike" id="useMyJd" type="button">帶入示範資料 →</button>
       </div>
-      ${renderJdList()}
     </div>`;
   }
 
@@ -804,7 +861,6 @@ function renderJob() {
         <button class="linklike" id="resetJd" type="button" style="margin-top:8px">換一份 JD，重新分析 →</button>
       </div>
       ${lockCard(LOCKS[1])}
-      ${renderJdList()}
     </div>`;
   }
   const planned = J.prep.filter(p=>prepSt(p.id).planned).length;
@@ -816,7 +872,6 @@ function renderJob() {
         <div class="jp">${J.position}</div>
         <div class="sub">${J.industry}</div>
         <div class="fmt">${J.format}</div>
-        <button class="linklike" id="resetJd" type="button" style="margin-top:8px">換一份新的 JD →</button>
       </div>
 
       <div class="card">
@@ -824,15 +879,13 @@ function renderJob() {
         <div class="sub">算法：符合每項記 1 分、證據薄每項記 0.4 分、缺口記 0 分，除以三類項目總數。履歷調整後回這裡看分數是否上升。</div>
       </div>
 
-      <div class="card">
-        <h3>你跟這份 JD 的落差</h3>
+      ${jobSection("fit", "你跟這份 JD 的落差", `
         <div class="fitrow"><span class="tg tg-強">符合</span><div>${J.fitStrong.map(x=>`<span class="pill ok">${x}</span>`).join("")}</div></div>
         <div class="fitrow"><span class="tg tg-中">證據薄</span><div>${J.fitWeak.map(x=>`<span class="pill mid">${x}</span>`).join("")}</div></div>
         <div class="fitrow"><span class="tg tg-弱">缺口</span><div>${J.fitMiss.map(x=>`<span class="pill bad">${x}</span>`).join("")}</div></div>
-      </div>
+      `)}
 
-      <div class="card">
-        <div class="row between"><h3 style="margin:0">面試前準備</h3><span class="chip chip-live">${planned}/${J.prep.length} 打算做</span></div>
+      ${jobSection("prep", `面試前準備 <span class="chip chip-live">${planned}/${J.prep.length} 打算做</span>`, `
         <div class="sub">時間尺度是小時。勾「我打算做」之後，面試完到「面試後」分頁結算。</div>
         ${J.prep.map(p=>{const st=prepSt(p.id);return `
           <div class="rec ${st.planned?"on":""}">
@@ -843,29 +896,24 @@ function renderJob() {
             <div class="sub"><b>對應缺口</b>　${p.gap}</div>
             <div class="sub warnl"><b>會用上的時刻</b>　${p.when}</div>
           </div>`}).join("")}
-      </div>
+      `)}
 
-      <div class="card">
-        <h3>最可能被問倒的一題</h3>
+      ${jobSection("hardest", "最可能被問倒的一題", `
         <div class="hardq">${J.hardest.q}</div>
         <div class="sub" style="margin:8px 0"><b>為什麼</b>　${J.hardest.why}</div>
         ${J.hardest.how.map(h=>`<div class="sub" style="margin-bottom:6px">${h}</div>`).join("")}
-      </div>
+      `)}
 
-      <div class="card">
-        <h3>AI 猜這場會問的 8 題</h3>
+      ${jobSection("questions", "AI 猜這場會問的 8 題", `
         <div class="sub">面試後請先到「面試後」分頁填實際被問的題，再回來比對。</div>
         ${J.questions.map((q,i)=>`<div class="qq"><span class="n">${i+1}</span><div>${q}</div></div>`).join("")}
-      </div>
+      `)}
 
-      <div class="card">
-        <h3>履歷上講不清楚的地方</h3>
+      ${jobSection("resumeGaps", "履歷上講不清楚的地方", `
         ${J.resumeGaps.map(g=>`<div class="ast"><div class="cn">${g.t}</div><div class="sub">${g.d}</div></div>`).join("")}
-      </div>
+      `)}
 
-      ${unlocked("fitAdvice") ? `
-      <div class="card">
-        <div class="row between"><h3 style="margin:0">履歷調整方向</h3><span class="chip chip-live">週～月</span></div>
+      ${unlocked("fitAdvice") ? jobSection("plan", `履歷調整方向 <span class="chip chip-live">週～月</span>`, `
         <div class="sub">結果要下一次投遞才看得到——這是需要一直回來更新的那一種。</div>
         ${ALAN.plan.map(p=>{const on=planDone(p.id);return `
           <div class="rec ${on?"on":""}">
@@ -878,8 +926,7 @@ function renderJob() {
           </div>`}).join("")}
         <h3 style="margin-top:14px">這些建議沒有涵蓋的</h3>
         ${ALAN.planUncovered.map(x=>`<div class="sub" style="margin-bottom:8px">${x}</div>`).join("")}
-      </div>` : lockCard(LOCKS[0])}
-      ${renderJdList()}
+      `) : lockCard(LOCKS[0])}
     </div>`;
 }
 
@@ -1019,20 +1066,20 @@ function renderSettings() {
     <div class="view">
       <div class="h1">設定</div>
 
-      <div class="card">
-        <h3>身分</h3>
-        <div class="brow"><span>你是</span><b>${state.member || "—"}</b></div>
-        <div class="sub" style="margin-top:6px">履歷上傳時會同步進團隊共用資料庫，標記成這個名字。</div>
-        <button class="btn block subtle" id="changeMemberBtn" style="margin-top:10px">切換身分</button>
+      <div class="card acctcard">
+        <div class="avatar">D</div>
+        <div>
+          <div class="acctname">Demo User</div>
+          <div class="sub" style="margin:1px 0 0">已用 Google 帳號登入（僅供展示，非實際登入功能）</div>
+        </div>
       </div>
 
       <div class="card">
-        <h3>示範模式</h3>
         <div class="swrow">
-          <div><div class="sn">遮蔽個資與公司名</div>
-            <div class="sub" style="margin:2px 0 0">畫面上把姓名、電話、Email、雇主與合作夥伴換成代號。只影響顯示，存下來的資料還是原文。</div></div>
+          <h3 style="margin:0">遮蔽個資與公司名</h3>
           <button class="sw ${state.demoMask ? "on" : ""}" id="maskSw"><i></i></button>
         </div>
+        <div class="sub" style="margin-top:var(--sp-1)">畫面上把姓名、電話、Email、雇主與合作夥伴換成代號。只影響顯示，存下來的資料還是原文。</div>
         ${state.demoMask ? `<div class="sub" style="margin-top:8px">目前遮蔽 ${MASKS.length} 組詞。規則在 <code>mask.js</code>。</div>` : ""}
       </div>
 
@@ -1049,14 +1096,6 @@ function renderSettings() {
         <h3>重置</h3>
         <div class="sub">清掉之後要重新回答 Basic 5 題。這台裝置以外的地方沒有備份。</div>
         <button class="btn block danger" id="resetBtn">清除全部資料</button>
-      </div>
-
-      <div class="card">
-        <h3>關於</h3>
-        <div class="sub">介面架構沿用 <b>Sunny</b> 在 <code>main</code> 分支上的 <code>sunny/webapp/</code>，
-          內容與資料換成 Alan 這一輪的真實閉環。詳見 <code>webapp/ORIGIN.md</code>。</div>
-        <div class="sub">AI 輸出由 <code>prompts/</code> 底下的 prompt 在本機跑出來後寫進資料檔，
-          這個 demo 不即時呼叫 API。</div>
       </div>
     </div>`;
 }
@@ -1134,9 +1173,35 @@ function renderAppDash() {
   `;
 }
 
-function renderApps() {
-  const s = computeStats();
+function renderAddAppView() {
   const rvOptions = state.resumes.map((r) => `<option value="${r.label}">${r.label}</option>`).join("") || "<option value=\"未指定\">未指定履歷</option>";
+  return `
+    <div class="view">
+      <button class="backlink" id="backFromAddApp">← 回到投遞紀錄</button>
+      <div class="h1">新增投遞紀錄</div>
+      <div class="card">
+        <div class="form-grid">
+          <input class="full" id="appCompany" placeholder="公司名稱">
+          <input class="full" id="appPosition" placeholder="應徵職位">
+          <select id="appResumeVersion">${rvOptions}</select>
+          <select id="appStatus">
+            <option>投遞・無回應</option>
+            <option>被查看</option>
+            <option>進面試</option>
+            <option>收到 offer</option>
+            <option>已婉拒/未錄取</option>
+          </select>
+        </div>
+        <textarea class="full" id="appJd" placeholder="貼上這個職缺的 JD（選填，之後可以在這筆紀錄上直接產生進階問題）" style="min-height:70px;margin-bottom:10px"></textarea>
+        <button class="btn block" id="addAppBtn">➕ 新增</button>
+      </div>
+    </div>`;
+}
+
+function renderApps() {
+  if (state.addingApp) return renderAddAppView();
+
+  const s = computeStats();
   const rows = state.applications.map((a) => `
     <div class="approw" style="flex-direction:column;align-items:stretch;gap:8px">
       <div class="row between">
@@ -1159,34 +1224,21 @@ function renderApps() {
       <div class="h1">投遞紀錄</div>
       <p class="sub">這一塊要回來更新才會長出東西——它量的是累積，不是單次。</p>
 
-      ${state.applications.length ? renderAppDash() : `
-        <div class="card">
-          <div class="emptybox">
-            <div class="ei">📮</div>
-            <div class="et">還沒有投遞紀錄</div>
-            <div class="sub" style="margin:4px 0 0">新增第一筆會解鎖<b>投遞結果、進度數據表</b>。</div>
-          </div>
-          <button class="btn block subtle" id="seedAppsBtn">帶入 8 筆示範紀錄 →</button>
-        </div>`}
+      ${state.applications.length ? renderAppDash() : ""}
       ${s.topRole ? `<div class="card"><h3>🎯 目前浮現的目標</h3><div class="sub">投遞最集中的職能</div><div class="h1" style="margin:0">${s.topRole[0]} <span class="chip chip-live">${s.topRole[1]}/${s.apps} 筆</span></div></div>` : ""}
       <div class="card">
-        <h3>新增投遞紀錄</h3>
-        <div class="form-grid">
-          <input class="full" id="appCompany" placeholder="公司名稱">
-          <input class="full" id="appPosition" placeholder="應徵職位">
-          <select id="appResumeVersion">${rvOptions}</select>
-          <select id="appStatus">
-            <option>投遞・無回應</option>
-            <option>被查看</option>
-            <option>進面試</option>
-            <option>收到 offer</option>
-            <option>已婉拒/未錄取</option>
-          </select>
-        </div>
-        <textarea class="full" id="appJd" placeholder="貼上這個職缺的 JD（選填，之後可以在這筆紀錄上直接產生進階問題）" style="min-height:70px;margin-bottom:10px"></textarea>
-        <button class="btn block" id="addAppBtn">➕ 新增</button>
+        <h3>投遞紀錄</h3>
+        ${state.applications.length ? `
+        <div class="sub">共 ${state.applications.length} 筆</div>
+        <div class="applist">${rows}</div>
+        ` : `<div class="emptybox">
+               <div class="ei">📮</div>
+               <div class="et">還沒有投遞紀錄</div>
+               <div class="sub" style="margin:4px 0 0">新增第一筆會解鎖<b>投遞結果、進度數據表</b>。</div>
+             </div>
+             <button class="btn block subtle" id="seedAppsBtn" style="margin-top:12px">帶入 8 筆示範紀錄 →</button>`}
+        <button class="btn block" id="openAddApp" style="margin-top:12px">＋ 新增投遞紀錄</button>
       </div>
-      <div class="card"><h3>目前紀錄（${state.applications.length} 筆）</h3><div class="applist">${rows || "<div class=\"mock-note\">尚無紀錄</div>"}</div></div>
     </div>
   `;
 }
@@ -1266,7 +1318,17 @@ function renderTabbar() {
   bar.innerHTML = "";
   TABS.forEach((t) => {
     const node = el(`<button class="tab ${t.id === state.tab ? "on" : ""}"><span class="ic">${t.id === state.tab ? ICONS[t.id] : (ICONS_OFF[t.id] || ICONS[t.id])}</span><span>${t.label}</span></button>`);
-    node.addEventListener("click", () => { state.tab = t.id; render(); });
+    node.addEventListener("click", () => {
+      state.tab = t.id;
+      state.viewingResumeId = null;
+      state.addingResume = false;
+      state.jobFlowActive = false;
+      state.viewingAnalysisId = null;
+      state.addingApp = false;
+      state.jobOpenSection = null;
+      state.analysisOpenSection = null;
+      render();
+    });
     bar.appendChild(node);
   });
 }
@@ -1274,18 +1336,6 @@ function renderTabbar() {
 let lastViewKey = null;
 
 function render() {
-  if (!state.member) {
-    const screen = document.getElementById("screen");
-    document.getElementById("tabbar").style.display = "none";
-    const viewKey = "membergate";
-    const changed = viewKey !== lastViewKey;
-    lastViewKey = viewKey;
-    screen.innerHTML = renderMemberGate();
-    if (changed) screen.scrollTop = 0;
-    wireMemberGate();
-    return;
-  }
-
   renderTabbar();
   const screen = document.getElementById("screen");
   const viewKey = state.onboarded ? state.tab : "ob" + state.obStep;
@@ -1345,6 +1395,13 @@ function wireTab() {
     });
     const fitMoreBtn = document.getElementById("toggleFitMore");
     if (fitMoreBtn) fitMoreBtn.addEventListener("click", () => { state.showFitMore = !state.showFitMore; render(); });
+    screen.querySelectorAll("[data-dirtoggle]").forEach((el2) => {
+      el2.addEventListener("click", () => {
+        const i = Number(el2.dataset.dirtoggle);
+        state.openDirIdx = state.openDirIdx === i ? null : i;
+        render();
+      });
+    });
   }
 
   if (state.tab === "editBasics") {
@@ -1388,11 +1445,19 @@ function wireTab() {
       state.resume = state.resumes.find(r => r.primary).text;
       const added = state.resumes[state.resumes.length - 1];
       state.draftLabel = ""; state.draftText = "";
+      state.addingResume = false;
+      state.viewingResumeId = added.id;
       saveState();
       toast(first ? "🔓 已解鎖 2 個模組" : "➕ 已新增");
       render();
       syncResumeToTeam(added);
     };
+
+    const oar = document.getElementById("openAddResume");
+    if (oar) oar.addEventListener("click", () => { state.addingResume = true; render(); });
+
+    const bar = document.getElementById("backFromAddResume");
+    if (bar) bar.addEventListener("click", () => { state.addingResume = false; render(); });
 
     const ab = document.getElementById("addResBtn");
     if (ab) ab.addEventListener("click", () => add(lab.value, txt.value));
@@ -1424,37 +1489,63 @@ function wireTab() {
       });
     }
 
-    screen.querySelectorAll("[data-delres]").forEach((btn) => btn.addEventListener("click", () => {
+    screen.querySelectorAll("[data-delres]").forEach((btn) => btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
       const id = btn.dataset.delres;
       const wasPri = (state.resumes.find(r => r.id === id) || {}).primary;
       state.resumes = state.resumes.filter(r => r.id !== id);
       if (wasPri && state.resumes.length) state.resumes[0].primary = true;
       state.resume = state.resumes.length ? state.resumes.find(r => r.primary).text : "";
-      if (state.openResume === id) state.openResume = null;
+      if (state.viewingResumeId === id) state.viewingResumeId = null;
       saveState(); toast("已刪除"); render();
     }));
 
-    screen.querySelectorAll("[data-setpri]").forEach((btn) => btn.addEventListener("click", () => {
+    screen.querySelectorAll("[data-setpri]").forEach((btn) => btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
       state.resumes.forEach(r => { r.primary = r.id === btn.dataset.setpri; });
       state.resume = state.resumes.find(r => r.primary).text;
       saveState(); toast("已設為主要"); render();
     }));
 
-    screen.querySelectorAll("[data-viewres]").forEach((btn) => btn.addEventListener("click", () => {
-      state.openResume = state.openResume === btn.dataset.viewres ? null : btn.dataset.viewres;
-      saveState(); render();
+    screen.querySelectorAll("[data-viewres]").forEach((el2) => el2.addEventListener("click", () => {
+      state.viewingResumeId = el2.dataset.viewres;
+      render();
     }));
+
+    const brv = document.getElementById("backFromResumeView");
+    if (brv) brv.addEventListener("click", () => { state.viewingResumeId = null; render(); });
 
     screen.querySelectorAll("[data-editres]").forEach((ta) => ta.addEventListener("input", () => {
       const r = state.resumes.find(x => x.id === ta.dataset.editres);
       if (r) { r.text = ta.value; if (r.primary) state.resume = ta.value; saveState(); }
+    }));
+
+    screen.querySelectorAll("[data-renameres]").forEach((inp) => inp.addEventListener("input", () => {
+      const r = state.resumes.find(x => x.id === inp.dataset.renameres);
+      if (r) { r.label = inp.value; saveState(); }
+    }));
+
+    screen.querySelectorAll("[data-editlabel]").forEach((btn) => btn.addEventListener("click", () => {
+      const id = btn.dataset.editlabel;
+      state.editingLabelId = state.editingLabelId === id ? null : id;
+      render();
     }));
   }
 
   if (state.tab === "job") {
     if (!state.viewingAnalysisId) upsertCurrentJdAnalysis();
     const bav = document.getElementById("backFromAnalysisView");
-    if (bav) { bav.addEventListener("click", () => { state.viewingAnalysisId = null; render(); }); }
+    if (bav) { bav.addEventListener("click", () => { state.viewingAnalysisId = null; state.analysisOpenSection = null; render(); }); }
+    screen.querySelectorAll("[data-anasec]").forEach((row) => row.addEventListener("click", () => {
+      const key = row.dataset.anasec;
+      state.analysisOpenSection = state.analysisOpenSection === key ? null : key;
+      render();
+    }));
+    screen.querySelectorAll("[data-jobsec]").forEach((row) => row.addEventListener("click", () => {
+      const key = row.dataset.jobsec;
+      state.jobOpenSection = state.jobOpenSection === key ? null : key;
+      render();
+    }));
     const sja = document.getElementById("startJdAnalysis");
     if (sja) sja.addEventListener("click", () => {
       state.jd = "";
@@ -1463,11 +1554,12 @@ function wireTab() {
       state.prepAdopt = {};
       state.currentJdId = null;
       state.jobFlowActive = true;
+      state.jobOpenSection = null;
       saveState();
       render();
     });
     const bjf = document.getElementById("backFromJobFlow");
-    if (bjf) bjf.addEventListener("click", () => { state.jobFlowActive = false; saveState(); render(); });
+    if (bjf) bjf.addEventListener("click", () => { state.jobFlowActive = false; state.jobOpenSection = null; saveState(); render(); });
     const jt = document.getElementById("jdInput");
     if (jt) { jt.addEventListener("input", () => { state.jd = jt.value; saveState(); });
               jt.addEventListener("blur", () => render()); }
@@ -1483,6 +1575,7 @@ function wireTab() {
       state.gapHitAnswers = {};
       state.prepAdopt = {};
       state.currentJdId = null;
+      state.jobOpenSection = null;
       saveState();
       toast(hasScore ? "已存檔，可以貼新的 JD" : "已清空，可以貼新的 JD");
       render();
@@ -1495,6 +1588,7 @@ function wireTab() {
           saveState();
         } else {
           state.viewingAnalysisId = id;
+          state.analysisOpenSection = null;
         }
         render();
       });
@@ -1539,9 +1633,6 @@ function wireTab() {
   }
 
   if (state.tab === "settings") {
-    document.getElementById("changeMemberBtn").addEventListener("click", () => {
-      state.member = ""; state.memberPick = ""; saveState(); render();
-    });
     document.getElementById("maskSw").addEventListener("click", () => {
       state.demoMask = !state.demoMask; saveState();
       toast(state.demoMask ? "已遮蔽個資與公司名" : "已顯示真實資訊");
@@ -1628,7 +1719,15 @@ function wireTab() {
       toast("🔓 已解鎖投遞結果、進度數據表");
       render();
     });
-    document.getElementById("addAppBtn").addEventListener("click", () => {
+
+    const oaa = document.getElementById("openAddApp");
+    if (oaa) oaa.addEventListener("click", () => { state.addingApp = true; render(); });
+
+    const baa = document.getElementById("backFromAddApp");
+    if (baa) baa.addEventListener("click", () => { state.addingApp = false; render(); });
+
+    const addAppBtn = document.getElementById("addAppBtn");
+    if (addAppBtn) addAppBtn.addEventListener("click", () => {
       const company = document.getElementById("appCompany").value.trim();
       const position = document.getElementById("appPosition").value.trim();
       const resumeVersion = document.getElementById("appResumeVersion").value;
@@ -1636,6 +1735,7 @@ function wireTab() {
       const jd = document.getElementById("appJd").value.trim();
       if (!company || !position) { toast("請填公司名稱與職位"); return; }
       state.applications.push({ id: "app-" + Date.now() + "-" + Math.floor(Math.random() * 1000), company, position, resumeVersion, status, jd });
+      state.addingApp = false;
       saveState();
       toast("➕ 已新增投遞紀錄");
       render();
@@ -1694,13 +1794,15 @@ function checkValidationHash() {
 }
 window.addEventListener("hashchange", checkValidationHash);
 
-// 先渲染畫面（身分選擇／onboarding／履歷分頁都不需要 ALAN 示範資料），
+// 先渲染畫面（onboarding／履歷分頁都不需要 ALAN 示範資料），
 // demo-data.json 是 Alan 的真實個資，正式網址上刻意不部署（見 .gitignore），
-// 所以這裡失敗是預期狀況，不該擋住整支 app——只有依賴 ALAN/ALAN_JOB 的畫面
+// loadData() 讀不到 demo-data.json 時會 fallback 讀 demo-data.sample.json
+// （假資料，會進版控，正式網址上也會顯示，讓沒有真實資料的人打開 app 也有東西可看）。
+// 兩份都讀不到才是真的失敗，不該擋住整支 app——只有依賴 ALAN/ALAN_JOB 的畫面
 // （主頁／職缺／追問／面試後）在沒資料時各自顯示提示，見 RENDERERS 呼叫處的 try/catch。
 render();
 loadData()
   .then(() => { render(); checkValidationHash(); })
   .catch((e) => {
-    console.warn("demo-data.json 讀不到（正式網址上是預期行為，個資不進版控）：", e.message);
+    console.warn("demo-data.json 和 demo-data.sample.json 都讀不到：", e.message);
   });
