@@ -17,15 +17,57 @@ const STORAGE_KEY = "alan_mvp_demo_v1";
 // 履歷上傳到「履歷」分頁時，順便同步一份到三人共用的 Supabase 專案，
 // 讓 Berry／Sunny 也能各自從這支 app 上傳，不用跑去另一個頁面。
 // 這是背景同步，失敗不影響本機功能——本機 localStorage 永遠是主資料來源。
+//
+// owner_id 用 Supabase Anonymous Auth 的 auth.uid()：不用輸入任何東西、體驗跟
+// 匿名 id 一樣，但 RLS 可以真的用 owner_id = auth.uid() 擋掉別人讀到你的資料。
+// 三人內部蒐集語料時，owner_id 就是那個瀏覽器 session 的 uid，沒有另外用
+// "alan"/"berry"/"sunny" 這種字串——要知道是誰蒐集的，看是哪支瀏覽器/session 上傳的。
 const TEAM_SUPABASE_URL = "https://pbwntmnzjleqgsdmsitb.supabase.co";
 const TEAM_SUPABASE_KEY = "sb_publishable_lX2BwDcnPDsDBGT4V8MsWg_dmzQUto5";
+const TEAM_SESSION_KEY = "alan_mvp_team_session_v1";
+
+let teamSessionPromise = null;
+
+async function teamAuth(path, body) {
+  const res = await fetch(`${TEAM_SUPABASE_URL}/auth/v1/${path}`, {
+    method: "POST",
+    headers: {
+      "apikey": TEAM_SUPABASE_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body || {}),
+  });
+  if (!res.ok) throw new Error(`Supabase auth ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+// 匿名登入一次、存 access token，之後帶著這個 token 打 REST API，
+// RLS 才能用 auth.uid() 判斷是不是同一個 owner。
+async function getTeamSession() {
+  if (teamSessionPromise) return teamSessionPromise;
+  teamSessionPromise = (async () => {
+    const stored = JSON.parse(localStorage.getItem(TEAM_SESSION_KEY) || "null");
+    if (stored?.refresh_token) {
+      try {
+        return await teamAuth("token?grant_type=refresh_token", { refresh_token: stored.refresh_token });
+      } catch (e) {
+        console.warn("團隊資料庫 refresh 失敗，改用新的匿名登入", e);
+      }
+    }
+    const session = await teamAuth("signup", {});
+    localStorage.setItem(TEAM_SESSION_KEY, JSON.stringify(session));
+    return session;
+  })();
+  return teamSessionPromise;
+}
 
 async function teamSb(path, opts = {}) {
+  const session = await getTeamSession();
   const res = await fetch(`${TEAM_SUPABASE_URL}/rest/v1/${path}`, {
     ...opts,
     headers: {
       "apikey": TEAM_SUPABASE_KEY,
-      "Authorization": `Bearer ${TEAM_SUPABASE_KEY}`,
+      "Authorization": `Bearer ${session.access_token}`,
       "Content-Type": "application/json",
       ...(opts.headers || {}),
     },
@@ -35,30 +77,97 @@ async function teamSb(path, opts = {}) {
 }
 
 async function syncResumeToTeam(resume) {
-  if (!state.member) return;
   try {
-    const [row] = await teamSb("submissions", {
+    const [resumeRow] = await teamSb("resumes", {
       method: "POST",
       headers: { "Prefer": "return=representation" },
-      body: JSON.stringify({
-        member: state.member,
-        label: resume.label,
-        resume_text: resume.text,
-        jd_text: state.jd || "",
-      }),
+      body: JSON.stringify({ label: resume.label, text: resume.text }),
+    });
+    const [jdRow] = await teamSb("jds", {
+      method: "POST",
+      headers: { "Prefer": "return=representation" },
+      body: JSON.stringify({ text: state.jd || "" }),
+    });
+    const [submissionRow] = await teamSb("submissions", {
+      method: "POST",
+      headers: { "Prefer": "return=representation" },
+      body: JSON.stringify({ resume_id: resumeRow.id, jd_id: jdRow.id }),
     });
     toast("已同步到團隊資料庫");
-    if (row?.id) {
-      fetch(`${TEAM_SUPABASE_URL}/functions/v1/generate-followups`, {
-        method: "POST",
-        headers: { "apikey": TEAM_SUPABASE_KEY, "Authorization": `Bearer ${TEAM_SUPABASE_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ submission_id: row.id }),
-      }).catch(() => {});
+    if (submissionRow?.id) {
+      fetchRealFollowups(submissionRow.id);
+    }
+    if (resumeRow?.id) {
+      fetchRealProfile(resumeRow.id);
     }
   } catch (e) {
     console.warn("同步團隊資料庫失敗（不影響本機使用）", e);
     toast("同步團隊資料庫失敗，履歷仍保留在本機");
   }
+}
+
+// 拿剛存進 Supabase 的履歷 + 這個人的 basics，跑 analyze-profile（真的叫 Claude API），
+// 結果取代主頁上原本寫死的 ALAN.dash 示範資料（職涯目標/工作類型/技能雷達/資產短板）。
+// 失敗時維持示範資料，不擋畫面。
+async function fetchRealProfile(resumeId) {
+  state.realProfileStatus = "pending";
+  saveState();
+  try {
+    const session = await getTeamSession();
+    const res = await fetch(`${TEAM_SUPABASE_URL}/functions/v1/analyze-profile`, {
+      method: "POST",
+      headers: {
+        "apikey": TEAM_SUPABASE_KEY,
+        "Authorization": `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ resume_id: resumeId, basics: state.basics }),
+    });
+    if (!res.ok) throw new Error(`analyze-profile ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    if (data.error || !data.profile) throw new Error(data.error || "沒有回傳分析結果");
+    state.realProfile = data.profile;
+    state.realProfileStatus = "done";
+  } catch (e) {
+    console.warn("跑職涯畫像分析失敗，先顯示示範資料", e);
+    state.realProfileStatus = "error";
+  }
+  saveState();
+  render();
+}
+
+// 拿剛存進 Supabase 的履歷/JD，跑 generate-followups（目前是規則引擎，非 AI），
+// 結果取代主頁/職缺分析頁上原本寫死的示範追問題目。失敗時維持示範資料，不擋畫面。
+async function fetchRealFollowups(submissionId) {
+  state.realFollowupsStatus = "pending";
+  try {
+    const session = await getTeamSession();
+    const res = await fetch(`${TEAM_SUPABASE_URL}/functions/v1/generate-followups`, {
+      method: "POST",
+      headers: {
+        "apikey": TEAM_SUPABASE_KEY,
+        "Authorization": `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ submission_id: submissionId }),
+    });
+    if (!res.ok) throw new Error(`generate-followups ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    state.realFollowups = (data.followups || []).map((f, i) => ({
+      id: "rf" + i,
+      q: f.question,
+      why: f.why,
+    }));
+    state.realFollowupsStatus = "done";
+    if (data.fit) {
+      state.realFit = { fitStrong: data.fit.strong || [], fitWeak: data.fit.weak || [], fitMiss: data.fit.miss || [] };
+    }
+  } catch (e) {
+    console.warn("跑追問分析失敗，先顯示示範追問題目", e);
+    state.realFollowupsStatus = "error";
+  }
+  saveState();
+  render();
 }
 const TABS = [
   { id: "home", label: "主頁" },
@@ -164,10 +273,36 @@ function defaultState() {
     actualRaw: "",     // 面試官實際問的問題（一行一題）
     actualLocked: false,
     actualLockedAt: null,
+    realFollowups: null,       // 讀你貼的履歷/JD 跑出來的追問（generate-followups），有值時取代示範資料
+    realFollowupsStatus: null, // null=還沒跑 | "pending" | "done" | "error"
+    realFit: null,              // 讀你貼的履歷/JD 跑出來的適配度分析（fitStrong/fitWeak/fitMiss），有值時取代示範資料
+    realProfile: null,          // 讀你的 basics/履歷跑出來的職涯畫像（analyze-profile，真的叫 Claude），有值時取代主頁示範資料
+    realProfileStatus: null,    // null=還沒跑 | "pending" | "done" | "error"
+    jdSubmitted: false,        // 是否已按下「分析這份 JD」——貼完文字不會自動跑分析，要按過這顆才會送出真的分析
     // 內部驗證畫面用，跟一般使用者體驗無關
     validationPersonaId: realPersonas()[0].id,
     validationRevealed: false,
   };
+}
+
+// PDF 履歷上傳的文字抽取，用 pdf.js（見 index.html 的 CDN script）。只有開發模式
+// 才會載入這顆 library，正式打包的 dist 單檔沒有，window.pdfjsLib 會是 undefined，
+// 呼叫端要檢查過再叫這個函數。
+if (window.pdfjsLib) {
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js";
+}
+async function extractPdfText(file) {
+  const buf = await file.arrayBuffer();
+  const doc = await window.pdfjsLib.getDocument({ data: buf }).promise;
+  const pages = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((it) => it.str).join(" "));
+  }
+  const text = pages.join("\n").trim();
+  if (!text) throw new Error("PDF 抽出來是空的（可能是掃描檔/圖片，沒有可選取的文字層）");
+  return text;
 }
 
 function loadState() {
@@ -469,9 +604,48 @@ function computeStats() {
   return { triedCount, usefulCount, completeness, topRole: sorted[0], apps: state.applications.length, versions: state.resumeVersions.length, qCount };
 }
 
+// 有跑出真的追問（讀使用者貼的履歷/JD）就用真的，否則退回示範資料，
+// 讓還沒同步成功／沒有網路的人也能看到完整畫面。
+function currentFollowups() {
+  return (state.realFollowups && state.realFollowups.length) ? state.realFollowups : ALAN_JOB.diagnosis.followups;
+}
+
+// 同 currentFollowups()：有真的適配度分析結果就用真的，否則退回示範資料。
+function currentFit() {
+  if (state.realFit) return state.realFit;
+  return { fitStrong: ALAN_JOB.fitStrong, fitWeak: ALAN_JOB.fitWeak, fitMiss: ALAN_JOB.fitMiss };
+}
+
+// 公司名／職位／產業／型態這幾個欄位，規則引擎完全沒有邏輯可以從 JD 全文抽出來——
+// 貼的是示範 JD 全文才用示範資料的公司名/職位，否則從使用者貼的 JD 第一行取一個
+// 顯示用標籤，不編造公司名。isDemo 同時標記「面試題目／面試前準備」這些目前
+// 完全沒有真的版本、永遠是示範內容的區塊，讓畫面上老實標出來。
+function jdMeta(jdText) {
+  const t = (jdText || "").trim();
+  const isDemo = t === (ALAN_JOB.jdText || "").trim();
+  if (isDemo) {
+    return { company: ALAN_JOB.company, position: ALAN_JOB.position, industry: ALAN_JOB.industry, format: ALAN_JOB.format, isDemo: true };
+  }
+  const firstLine = t.split(/\n/).map((s) => s.trim()).find(Boolean) || "";
+  const label = firstLine.length > 28 ? firstLine.slice(0, 28) + "…" : firstLine;
+  return { company: "", position: label || "未命名職缺", industry: "", format: "", isDemo: false };
+}
+function jdTitle(meta) {
+  return meta.company ? `${meta.company} · ${meta.position}` : meta.position;
+}
+function demoContentNote() {
+  return `<div class="mock-note" style="margin-bottom:10px">示範範例——規則引擎目前只算得出「追問」與「適配度落差」，這裡的內容不是根據你的 JD/履歷算出來的。</div>`;
+}
+
+// 同 currentFollowups()：有真的職涯畫像分析（analyze-profile）就用真的，否則退回示範資料。
+function currentProfile() {
+  if (state.realProfile) return state.realProfile;
+  return ALAN.dash;
+}
+
 function lv(x){ return x==="強"?100:x==="中"?60:30 }
-function jdMatchScore(J){
-  const strong = J.fitStrong.length, weak = J.fitWeak.length, miss = J.fitMiss.length;
+function jdMatchScore(fit){
+  const strong = fit.fitStrong.length, weak = fit.fitWeak.length, miss = fit.fitMiss.length;
   const total = strong + weak + miss;
   if (!total) return 0;
   return Math.round(100 * (strong * 1 + weak * 0.4) / total);
@@ -480,16 +654,17 @@ function upsertCurrentJdAnalysis() {
   if (!state.jd.trim()) return;
   if (!state.currentJdId) state.currentJdId = "jd" + Date.now();
   const prev = state.jdAnalyses.find(x => x.id === state.currentJdId);
-  const J = ALAN_JOB, D = J.diagnosis;
+  const J = ALAN_JOB, D = J.diagnosis, meta = jdMeta(state.jd);
   const rec = {
     id: state.currentJdId,
     jd: state.jd,
-    company: J.company,
-    position: J.position,
-    score: unlocked("jdMatch") ? jdMatchScore(J) : null,
+    company: meta.company,
+    position: meta.position,
+    isDemo: meta.isDemo, // 面試題目／面試前準備目前永遠是示範內容，畫面靠這個旗標標示出來
+    score: unlocked("jdMatch") ? jdMatchScore(currentFit()) : null,
     followupCount: answeredFollowupIds().length,
-    followups: D.followups.map(f => ({ q: f.q, why: f.why, answer: state.followupAnswers[f.id] || "" })),
-    fitStrong: J.fitStrong, fitWeak: J.fitWeak, fitMiss: J.fitMiss,
+    followups: currentFollowups().map(f => ({ q: f.q, why: f.why, answer: state.followupAnswers[f.id] || "" })),
+    fitStrong: currentFit().fitStrong, fitWeak: currentFit().fitWeak, fitMiss: currentFit().fitMiss,
     hardest: J.hardest,
     questions: J.questions,
     prep: J.prep.map(p => Object.assign({}, p, { planned: !!prepSt(p.id).planned })),
@@ -504,7 +679,7 @@ function upsertCurrentJdAnalysis() {
 function planDone(id){ return !!(state.planAdopt[id]||{}).done }
 function unlocked(id){
   if (id==="fitAdvice") return state.resumes.length > 0;
-  if (id==="jdHasFollowups") return state.jd.trim().length > 10;
+  if (id==="jdHasFollowups") return state.jdSubmitted && state.jd.trim().length > 10;
   if (id==="jdMatch")   return state.jd.trim().length > 10 && answeredFollowupIds().length > 0;
   if (id==="appTable")  return state.applications.length > 0;
   return false;
@@ -539,9 +714,15 @@ function lockCard(L){
 }
 
 function renderHome() {
-  const b = state.basics, D = ALAN.dash;
+  const b = state.basics, D = currentProfile();
+  const isRealProfile = !!state.realProfile;
   const need = LOCKS.filter(L=>!unlocked(L.id));
   const pct = Math.round((3 - need.length) / 3 * 100);
+  const profileChip = isRealProfile
+    ? `<span class="chip chip-real">● 依你的 basics/履歷生成</span>`
+    : state.realProfileStatus === "pending"
+      ? `<span class="chip chip-mock">○ 分析中…</span>`
+      : `<span class="chip chip-mock">○ 示範資料，尚未根據你的 basics/履歷調整</span>`;
 
   return `
     <div class="view">
@@ -562,7 +743,7 @@ function renderHome() {
       </div>
 
       <div class="card">
-        <h3>職涯目標</h3>
+        <div class="row between"><h3 style="margin:0">職涯目標</h3>${profileChip}</div>
         <div class="sub">AI 從你第 2 題的自然語言回答解析出來的</div>
         <div class="goal"><span class="gy">3 年</span><div>${D.goal3}</div></div>
         <div class="goal"><span class="gy gy5">5 年</span><div>${D.goal5}</div></div>
@@ -573,7 +754,7 @@ function renderHome() {
         <h3>你補充的背景資訊</h3>
         <div class="sub">回答「AI 追問」之後回填在這裡，會一起用來調整方向建議與匹配分數</div>
         ${answeredFollowupIds().map(id => {
-          const f = ALAN_JOB.diagnosis.followups.find(x => x.id === id);
+          const f = currentFollowups().find(x => x.id === id);
           return f ? `<div class="ast"><div class="cn">${f.q}</div><div class="sub">${state.followupAnswers[id]}</div></div>` : "";
         }).join("")}
       </div>` : ""}
@@ -589,7 +770,7 @@ function renderHome() {
         <h3>技能能力方向</h3>
         <div class="sub">面積來自你的實際成果證據強度，不是自評</div>
         ${radar(D.radar)}
-        ${ALAN.capabilities.map(c=>`
+        ${D.capabilities.map(c=>`
           <div class="cap">
             <div class="row between"><span class="cn">${c.name}</span><span class="tg tg-${c.level}">${c.level}</span></div>
             <div class="bar"><i style="width:${lv(c.level)}%" class="b-${c.level}"></i></div>
@@ -611,9 +792,9 @@ function renderHome() {
         <button class="linklike" id="toggleFitMore" type="button" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--fill)">${state.showFitMore ? "收合資產與短板 ↑" : "看你可能沒發現的資產與短板 →"}</button>
         ${state.showFitMore ? `
         <h3 style="margin-top:14px">你可能沒發現的資產</h3>
-        ${ALAN.assets.map(a=>`<div class="ast"><div class="cn">${a.t}</div><div class="sub">${a.d}</div></div>`).join("")}
+        ${(D.assets && D.assets.length ? D.assets : ALAN.assets).map(a=>`<div class="ast"><div class="cn">${a.t}</div><div class="sub">${a.d}</div></div>`).join("")}
         <h3 style="margin-top:14px">短板</h3>
-        ${ALAN.gaps.map(g=>`<div class="ast">
+        ${(D.gaps && D.gaps.length ? D.gaps : ALAN.gaps).map(g=>`<div class="ast">
           <div class="row between"><span class="cn">${g.t}</span><span class="tg ${g.fix==="補得起來"?"tg-fix":"tg-avoid"}">${g.fix}</span></div>
           <div class="sub">${g.d}</div></div>`).join("")}
         ` : ``}
@@ -737,7 +918,7 @@ function renderJdListingPage() {
           return `
           <div class="rec" data-viewjd="${r.id}" style="cursor:pointer">
             <div class="row between" style="gap:8px">
-              <span class="rt">${r.company} · ${r.position}</span>
+              <span class="rt">${r.company ? r.company + " · " + r.position : r.position}</span>
               <div style="display:flex;align-items:center;gap:4px;flex:none">
                 ${scoreChip}
                 <button class="iconbtn" data-delanalysis="${r.id}" type="button" title="刪除這筆">🗑</button>
@@ -773,9 +954,10 @@ function jobSection(key, title, bodyHtml) {
 
 function renderAnalysisView(r) {
   const planned = (r.prep || []).filter(p => p.planned).length;
+  const contentIsDemo = r.isDemo !== false; // 舊紀錄沒存這個旗標，一律當示範內容處理，比較安全
   return `<div class="view">
     <button class="backlink" id="backFromAnalysisView">← 回到職缺</button>
-    <div class="h1">${r.company} · ${r.position}</div>
+    <div class="h1">${r.company ? r.company + " · " + r.position : r.position}</div>
     <div class="card">
       <div class="row between"><h3 style="margin:0">JD 匹配分數（存檔時）</h3>${r.score === null ? `<span class="chip chip-mock">進行中</span>` : `<span class="chip chip-real">${r.score}</span>`}</div>
       <div class="sub">存於 ${r.createdAt}，當時已答 ${r.followupCount} 題追問。這個分數是存檔當下凍結的，之後在「職缺」分頁的操作不會改到它。</div>
@@ -802,6 +984,7 @@ function renderAnalysisView(r) {
     `)}
 
     ${anaSection("prep", `面試前準備（存檔時） <span class="chip chip-live">${planned}/${r.prep.length} 打算做</span>`, `
+      ${contentIsDemo ? demoContentNote() : ""}
       ${r.prep.map(p => `
         <div class="rec ${p.planned ? "on" : ""}">
           <div class="rt">${p.planned ? "☑" : "☐"} ${p.t}</div>
@@ -812,12 +995,14 @@ function renderAnalysisView(r) {
     `)}
 
     ${anaSection("hardest", "最可能被問倒的一題（存檔時）", `
+      ${contentIsDemo ? demoContentNote() : ""}
       <div class="hardq">${r.hardest.q}</div>
       <div class="sub" style="margin:8px 0"><b>為什麼</b>　${r.hardest.why}</div>
       ${r.hardest.how.map(h=>`<div class="sub" style="margin-bottom:6px">${h}</div>`).join("")}
     `)}
 
     ${anaSection("questions", "AI 猜這場會問的 8 題（存檔時）", `
+      ${contentIsDemo ? demoContentNote() : ""}
       ${r.questions.map((q,i)=>`<div class="qq"><span class="n">${i+1}</span><div>${q}</div></div>`).join("")}
     `)}
     ` : ""}
@@ -825,7 +1010,7 @@ function renderAnalysisView(r) {
 }
 
 function renderJob() {
-  const J = ALAN_JOB;
+  const J = ALAN_JOB, meta = jdMeta(state.jd);
 
   if (state.viewingAnalysisId) {
     const r = state.jdAnalyses.find(x => x.id === state.viewingAnalysisId);
@@ -844,6 +1029,7 @@ function renderJob() {
       <div class="card">
         <h3>職缺 JD</h3>
         <textarea id="jdInput" placeholder="貼上職缺描述…">${state.jd}</textarea>
+        <button class="btn block" id="analyzeJd" type="button" style="margin-top:10px">分析這份 JD →</button>
         <button class="linklike" id="useMyJd" type="button">帶入示範資料 →</button>
       </div>
     </div>`;
@@ -855,7 +1041,7 @@ function renderJob() {
       <button class="backlink" id="backFromJobFlow">← 回到分析紀錄列表</button>
       <div class="h1">這份職缺</div>
       <div class="card">
-        <div class="row between"><h3 style="margin:0">JD 已收到</h3><span class="chip chip-live">${J.company} · ${J.position}</span></div>
+        <div class="row between"><h3 style="margin:0">JD 已收到</h3><span class="chip chip-live">${jdTitle(meta)}</span></div>
         <div class="sub">在給你匹配分數之前，AI 先指出幾個落差、想追問幾個問題——回答至少 1 題之後才會顯示匹配分數與面試前準備。</div>
         <button class="btn block" data-goto="questions" style="margin-top:10px">看 AI 的追問 →</button>
         <button class="linklike" id="resetJd" type="button" style="margin-top:8px">換一份 JD，重新分析 →</button>
@@ -868,24 +1054,25 @@ function renderJob() {
     <div class="view">
       <button class="backlink" id="backFromJobFlow">← 回到分析紀錄列表</button>
       <div class="card jobhead">
-        <div class="jc">${J.company}</div>
-        <div class="jp">${J.position}</div>
-        <div class="sub">${J.industry}</div>
-        <div class="fmt">${J.format}</div>
+        ${meta.company ? `<div class="jc">${meta.company}</div>` : ""}
+        <div class="jp">${meta.position}</div>
+        ${meta.industry ? `<div class="sub">${meta.industry}</div>` : ""}
+        ${meta.format ? `<div class="fmt">${meta.format}</div>` : ""}
       </div>
 
       <div class="card">
-        <div class="row between"><h3 style="margin:0">JD 匹配分數</h3><span class="chip chip-real">${jdMatchScore(J)}</span></div>
+        <div class="row between"><h3 style="margin:0">JD 匹配分數</h3><span class="chip chip-real">${jdMatchScore(currentFit())}</span></div>
         <div class="sub">算法：符合每項記 1 分、證據薄每項記 0.4 分、缺口記 0 分，除以三類項目總數。履歷調整後回這裡看分數是否上升。</div>
       </div>
 
       ${jobSection("fit", "你跟這份 JD 的落差", `
-        <div class="fitrow"><span class="tg tg-強">符合</span><div>${J.fitStrong.map(x=>`<span class="pill ok">${x}</span>`).join("")}</div></div>
-        <div class="fitrow"><span class="tg tg-中">證據薄</span><div>${J.fitWeak.map(x=>`<span class="pill mid">${x}</span>`).join("")}</div></div>
-        <div class="fitrow"><span class="tg tg-弱">缺口</span><div>${J.fitMiss.map(x=>`<span class="pill bad">${x}</span>`).join("")}</div></div>
+        <div class="fitrow"><span class="tg tg-強">符合</span><div>${currentFit().fitStrong.map(x=>`<span class="pill ok">${x}</span>`).join("")}</div></div>
+        <div class="fitrow"><span class="tg tg-中">證據薄</span><div>${currentFit().fitWeak.map(x=>`<span class="pill mid">${x}</span>`).join("")}</div></div>
+        <div class="fitrow"><span class="tg tg-弱">缺口</span><div>${currentFit().fitMiss.map(x=>`<span class="pill bad">${x}</span>`).join("")}</div></div>
       `)}
 
       ${jobSection("prep", `面試前準備 <span class="chip chip-live">${planned}/${J.prep.length} 打算做</span>`, `
+        ${meta.isDemo ? "" : demoContentNote()}
         <div class="sub">時間尺度是小時。勾「我打算做」之後，面試完到「面試後」分頁結算。</div>
         ${J.prep.map(p=>{const st=prepSt(p.id);return `
           <div class="rec ${st.planned?"on":""}">
@@ -899,17 +1086,20 @@ function renderJob() {
       `)}
 
       ${jobSection("hardest", "最可能被問倒的一題", `
+        ${meta.isDemo ? "" : demoContentNote()}
         <div class="hardq">${J.hardest.q}</div>
         <div class="sub" style="margin:8px 0"><b>為什麼</b>　${J.hardest.why}</div>
         ${J.hardest.how.map(h=>`<div class="sub" style="margin-bottom:6px">${h}</div>`).join("")}
       `)}
 
       ${jobSection("questions", "AI 猜這場會問的 8 題", `
+        ${meta.isDemo ? "" : demoContentNote()}
         <div class="sub">面試後請先到「面試後」分頁填實際被問的題，再回來比對。</div>
         ${J.questions.map((q,i)=>`<div class="qq"><span class="n">${i+1}</span><div>${q}</div></div>`).join("")}
       `)}
 
       ${jobSection("resumeGaps", "履歷上講不清楚的地方", `
+        ${meta.isDemo ? "" : demoContentNote()}
         ${J.resumeGaps.map(g=>`<div class="ast"><div class="cn">${g.t}</div><div class="sub">${g.d}</div></div>`).join("")}
       `)}
 
@@ -945,8 +1135,8 @@ function renderQuestions() {
       </div>
 
       <div class="card">
-        <div class="row between"><h3 style="margin:0">AI 想追問你的問題</h3><span class="chip chip-live">已答 ${answered.length}/${D.followups.length}</span></div>
-        ${D.followups.map(f => `
+        <div class="row between"><h3 style="margin:0">AI 想追問你的問題</h3><span class="chip chip-live">已答 ${answered.length}/${currentFollowups().length}</span></div>
+        ${currentFollowups().map(f => `
           <div class="rec ${state.followupAnswers[f.id] && state.followupAnswers[f.id].trim() ? "on" : ""}">
             <div class="rt">${f.q}</div>
             <div class="sub"><b>為什麼問這題</b>　${f.why}</div>
@@ -1482,8 +1672,13 @@ function wireTab() {
           const rd = new FileReader();
           rd.onload = () => done(String(rd.result));
           rd.readAsText(f);
+        } else if (/\.pdf$/i.test(f.name) && window.pdfjsLib) {
+          extractPdfText(f).then(done).catch((e) => {
+            console.warn("PDF 文字抽取失敗，改帶入示範內容", e);
+            done(ALAN.resumeText);
+          });
         } else {
-          // Demo：PDF 不做真的文字抽取，直接帶入示範內容
+          // 開發模式沒有載入 pdf.js（例如正式打包的 dist 單檔）：PDF 不做真的文字抽取，直接帶入示範內容
           done(ALAN.resumeText);
         }
       });
@@ -1549,6 +1744,7 @@ function wireTab() {
     const sja = document.getElementById("startJdAnalysis");
     if (sja) sja.addEventListener("click", () => {
       state.jd = "";
+      state.jdSubmitted = false;
       state.followupAnswers = {};
       state.gapHitAnswers = {};
       state.prepAdopt = {};
@@ -1561,16 +1757,28 @@ function wireTab() {
     const bjf = document.getElementById("backFromJobFlow");
     if (bjf) bjf.addEventListener("click", () => { state.jobFlowActive = false; state.jobOpenSection = null; saveState(); render(); });
     const jt = document.getElementById("jdInput");
-    if (jt) { jt.addEventListener("input", () => { state.jd = jt.value; saveState(); });
-              jt.addEventListener("blur", () => render()); }
+    if (jt) { jt.addEventListener("input", () => { state.jd = jt.value; saveState(); }); }
+    const aj = document.getElementById("analyzeJd");
+    if (aj) aj.addEventListener("click", () => {
+      if (state.jd.trim().length <= 10) { toast("JD 內容太短，貼完整一點再分析"); return; }
+      if (state.resumes.length === 0) { toast("請先上傳履歷，才能跑真的適配度分析"); return; }
+      state.jdSubmitted = true;
+      state.realFollowups = null;
+      state.realFit = null;
+      state.realFollowupsStatus = "pending";
+      saveState();
+      render();
+      syncResumeToTeam(state.resumes.find(r => r.primary) || state.resumes[0]);
+    });
     const uj = document.getElementById("useMyJd");
     if (uj) uj.addEventListener("click", () => {
-      state.jd = ALAN_JOB.jdText; saveState(); toast("🔓 已解鎖追問"); render();
+      state.jd = ALAN_JOB.jdText; state.jdSubmitted = true; saveState(); toast("🔓 已解鎖追問"); render();
     });
     const rj = document.getElementById("resetJd");
     if (rj) rj.addEventListener("click", () => {
       const hasScore = unlocked("jdMatch");
       state.jd = "";
+      state.jdSubmitted = false;
       state.followupAnswers = {};
       state.gapHitAnswers = {};
       state.prepAdopt = {};

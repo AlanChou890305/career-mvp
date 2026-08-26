@@ -6,6 +6,9 @@
 <title>CareerForge</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/framework7-icons@5.0.5/css/framework7-icons.min.css">
 <link rel="stylesheet" href="styles.css">
+<!-- PDF 履歷上傳用來抽文字，只有開發模式（serve.sh）載入；打包成 dist 單檔時
+     build.js 會把這顆 script 拿掉，正式站上傳 PDF 維持原本的示範行為。 -->
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
 </head>
 <body>
 <div class="device">
