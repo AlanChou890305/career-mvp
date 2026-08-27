@@ -360,6 +360,18 @@ code{background:var(--fill);border-radius:var(--sp-1);padding:1px var(--sp-1);
 .ast:last-child{border-bottom:0;padding-bottom:2px}
 .ast .cn{margin-bottom:2px}
 
+/* 主頁「職涯軌跡」：直向時間軸，用左側一條線＋小圓點串起每個里程碑 */
+.timeline{padding-left:2px}
+.tlitem{position:relative;padding:0 0 var(--sp-4) 20px}
+.tlitem:last-child{padding-bottom:0}
+.tlitem::before{content:"";position:absolute;left:3px;top:14px;bottom:-4px;width:1px;background:var(--sep-o)}
+.tlitem:last-child::before{display:none}
+.tldot{position:absolute;left:0;top:4px;width:8px;height:8px;border-radius:50%;background:var(--label3)}
+.tldot.done{background:var(--green-fill)}
+.tldot.active{background:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+.tldot.mock{background:var(--fill);box-shadow:inset 0 0 0 1px var(--sep)}
+.tlbody .cn{font-weight:600}
+
 .dir{border:0;border-radius:var(--r-ctl);padding:var(--sp-3);margin-bottom:var(--sp-2);background:var(--fill2)}
 .dir:last-child{margin-bottom:2px}
 .dn{font-weight:600;font-size:var(--fs-head);display:flex;align-items:center;gap:var(--sp-2)}
@@ -387,6 +399,15 @@ code{background:var(--fill);border-radius:var(--sp-1);padding:1px var(--sp-1);
 .rm{margin:var(--sp-2) 0 var(--sp-2) 34px}
 .warnl{color:var(--red)!important}
 .warnl b{color:var(--red)!important}
+
+/* 行動建議的主觀感受評分（讚/踩＋星星）：一行、小尺寸，不搶走建議內容的注意力 */
+.recfeedback{margin-top:8px;display:flex;align-items:center;gap:1px}
+.rf-label{font-size:var(--fs-cap);color:var(--label3);margin-right:5px}
+.rf-thumb{background:none;border:0;padding:1px;font-size:12px;line-height:1;cursor:pointer;
+  opacity:.35;filter:grayscale(1);transition:opacity .15s,filter .15s}
+.rf-thumb.up,.rf-thumb.down{opacity:1;filter:none}
+.rf-stars{display:inline-flex;margin-left:5px}
+.rf-star{background:none;border:0;padding:1px;font-size:13px;line-height:1;color:var(--amber-fill);cursor:pointer}
 
 /* ===== 職缺頁頭 · 白卡 ===== */
 .jobhead{background:var(--card);color:var(--label)}

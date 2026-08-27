@@ -172,7 +172,7 @@ async function fetchRealFollowups(submissionId) {
 const TABS = [
   { id: "home", label: "主頁" },
   { id: "resume", label: "履歷" },
-  { id: "job", label: "職缺" },
+  { id: "job", label: "職缺分析" },
   { id: "apps", label: "投遞" },
   { id: "settings", label: "設定" },
 ];
@@ -594,7 +594,7 @@ function answeredFollowupIds() {
 function computeStats() {
   const recEntries = Object.values(state.recAdoption);
   const triedCount = recEntries.filter((r) => r.tried).length;
-  const usefulCount = recEntries.filter((r) => r.tried && r.useful).length;
+  const usefulCount = recEntries.filter((r) => r.tried && r.liked === true).length;
   const qCount = answeredFollowupIds().length;
   const filled = [
     state.resume.trim().length > 30,
@@ -604,10 +604,11 @@ function computeStats() {
     qCount > 0,
   ];
   const completeness = Math.round((filled.filter(Boolean).length / filled.length) * 100);
+  const curApps = currentCycleApps();
   const freq = {};
-  state.applications.forEach((a) => { freq[a.position] = (freq[a.position] || 0) + 1; });
+  curApps.forEach((a) => { freq[a.position] = (freq[a.position] || 0) + 1; });
   const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
-  return { triedCount, usefulCount, completeness, topRole: sorted[0], apps: state.applications.length, versions: state.resumeVersions.length, qCount };
+  return { triedCount, usefulCount, completeness, topRole: sorted[0], apps: curApps.length, versions: state.resumeVersions.length, qCount };
 }
 
 // 有跑出真的追問（讀使用者貼的履歷/JD）就用真的，否則退回示範資料，
@@ -662,12 +663,14 @@ function upsertCurrentJdAnalysis() {
   if (!state.currentJdId) state.currentJdId = "jd" + Date.now();
   const prev = state.jdAnalyses.find(x => x.id === state.currentJdId);
   const J = ALAN_JOB, D = J.diagnosis, meta = jdMeta(state.jd);
+  const primaryResume = state.resumes.find(r => r.primary);
   const rec = {
     id: state.currentJdId,
     jd: state.jd,
     company: meta.company,
     position: meta.position,
     isDemo: meta.isDemo, // 面試題目／面試前準備目前永遠是示範內容，畫面靠這個旗標標示出來
+    resumeVersion: primaryResume ? primaryResume.label : null, // 分析當下用的是哪一份履歷版本，存檔後不隨你之後改履歷而變
     score: unlocked("jdMatch") ? jdMatchScore(currentFit()) : null,
     followupCount: answeredFollowupIds().length,
     followups: currentFollowups().map(f => ({ q: f.q, why: f.why, answer: state.followupAnswers[f.id] || "" })),
@@ -683,9 +686,34 @@ function upsertCurrentJdAnalysis() {
   saveState();
 }
 
+// 主觀感受評分（讚/踩 + 1-5 星），對應驗證計畫「行動推薦 a. 主觀感受」判準。
+// 共用在「履歷調整方向」跟「面試前準備」這兩份行動建議清單上，id 用各自的
+// p1/p2../j1/j2.. 當 key，兩邊不會撞。
+function recFeedbackHtml(id) {
+  const rec = state.recAdoption[id] || {};
+  return `
+    <div class="recfeedback">
+      <span class="rf-label">有幫助嗎</span>
+      <button class="rf-thumb ${rec.liked===true?"up":""}" data-recreact="${id}:up" type="button" title="有用">👍</button>
+      <button class="rf-thumb ${rec.liked===false?"down":""}" data-recreact="${id}:down" type="button" title="沒用">👎</button>
+      <span class="rf-stars">${[1,2,3,4,5].map(n=>`<button class="rf-star" data-recstar="${id}:${n}" type="button">${(rec.rating||0)>=n?"★":"☆"}</button>`).join("")}</span>
+    </div>`;
+}
+// 診斷型 AI 內容（職涯畫像、落差分析、追問本身⋯）只給讚／踩，不給星等——這些是
+// 「準不準」的判斷，不是「要不要照做」的行動建議，用同一套五星評分語意會混淆。
+function diagFeedbackHtml(id) {
+  const rec = state.recAdoption[id] || {};
+  return `
+    <div class="recfeedback">
+      <span class="rf-label">說得準嗎</span>
+      <button class="rf-thumb ${rec.liked===true?"up":""}" data-recreact="${id}:up" type="button" title="準">👍</button>
+      <button class="rf-thumb ${rec.liked===false?"down":""}" data-recreact="${id}:down" type="button" title="不準">👎</button>
+    </div>`;
+}
+
 function planDone(id){ return !!(state.planAdopt[id]||{}).done }
 function unlocked(id){
-  if (id==="fitAdvice") return state.resumes.length > 0;
+  if (id==="fitAdvice") return activeResumes().length > 0;
   if (id==="jdHasFollowups") return state.jdSubmitted && state.jd.trim().length > 10;
   if (id==="jdMatch")   return state.jd.trim().length > 10 && answeredFollowupIds().length > 0;
   if (id==="appTable")  return state.applications.length > 0;
@@ -723,6 +751,7 @@ function lockCard(L){
 function renderHome() {
   const b = state.basics, D = currentProfile();
   const isRealProfile = !!state.realProfile;
+  const primaryResume = state.resumes.find(r => r.primary);
   const need = LOCKS.filter(L=>!unlocked(L.id));
   const pct = Math.round((3 - need.length) / 3 * 100);
   const profileChip = isRealProfile
@@ -749,11 +778,37 @@ function renderHome() {
         <div class="sub" style="margin:12px 0 0">進階模組解鎖進度：${3-need.length}/3</div>
       </div>
 
+      ${(() => {
+        const s2024 = cycleSummary("2024"), s2026 = cycleSummary("2026");
+        if (!s2024 && !s2026) return "";
+        const cur = currentCycleId();
+        return `
+        <button class="card" data-goto="settings" type="button" style="width:100%;text-align:left;cursor:pointer;font-family:inherit;display:block;appearance:none;-webkit-appearance:none">
+          <div class="row between">
+            <span class="cn">🧭 ${cycleOrdinalLabel(cur)}${s2024 && s2026 ? "・累積使用 2 年" : ""}</span>
+            <span class="sub" style="margin:0">個人 Profile 看職涯軌跡 →</span>
+          </div>
+        </button>`;
+      })()}
+
+      ${(() => {
+        const trend = fitTrendChart(currentCycleApps());
+        if (!trend) return "";
+        return `
+        <div class="card">
+          <div class="row between"><h3 style="margin:0">📈 適配分數走勢</h3><span class="chip chip-real">這次求職 ${currentCycleApps().length} 筆</span></div>
+          <div class="sub">改履歷之後，分數有沒有真的上升——這是整個 app 想證明的事</div>
+          ${trend}
+          <button class="linklike" data-goto="apps" type="button" style="margin-top:10px">看完整投遞紀錄 →</button>
+        </div>`;
+      })()}
+
       <div class="card">
         <div class="row between"><h3 style="margin:0">職涯目標</h3>${profileChip}</div>
         <div class="sub">AI 從你第 2 題的自然語言回答解析出來的</div>
         <div class="goal"><span class="gy">3 年</span><div>${D.goal3}</div></div>
         <div class="goal"><span class="gy gy5">5 年</span><div>${D.goal5}</div></div>
+        ${diagFeedbackHtml("home-goal")}
       </div>
 
       ${answeredFollowupIds().length ? `
@@ -771,6 +826,20 @@ function renderHome() {
         <div class="tri"><span class="tl2">理想</span><div>${D.ideal.map(x=>`<span class="pill pill-lg ok">${x}</span>`).join("")}</div></div>
         <div class="tri"><span class="tl2">目標</span><div>${D.target.map(x=>`<span class="pill pill-lg mid">${x}</span>`).join("")}</div></div>
         <div class="tri"><span class="tl2">可接受</span><div>${D.accept.map(x=>`<span class="pill pill-lg">${x}</span>`).join("")}</div></div>
+        ${diagFeedbackHtml("home-worktype")}
+        <div class="tri" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--fill)">
+          <span class="tl2">AI 推薦</span>
+          <div>
+            ${unlocked("fitAdvice") ? `
+              <div class="cn">${ALAN.directions[0].t}</div>
+              <div class="sub" style="margin:2px 0 8px">${ALAN.directions[0].kw}</div>
+              <button class="linklike" data-scrollto="fitAdviceCard" type="button">看完整推薦（共 ${ALAN.directions.length} 個方向）→</button>
+            ` : `
+              <div class="sub" style="margin-bottom:8px">🔒 上傳履歷才會生成——AI 要讀到你的實際經歷才給得出方向，不是照職稱猜</div>
+              <button class="btn small subtle" data-goto="resume" type="button">上傳履歷解鎖 →</button>
+            `}
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -782,11 +851,13 @@ function renderHome() {
             <div class="row between"><span class="cn">${c.name}</span><span class="tg tg-${c.level}">${c.level}</span></div>
             <div class="bar"><i style="width:${lv(c.level)}%" class="b-${c.level}"></i></div>
           </div>`).join("")}
+        ${diagFeedbackHtml("home-radar")}
       </div>
 
       ${unlocked("fitAdvice") ? `
-      <div class="card">
+      <div class="card" id="fitAdviceCard">
         <div class="row between"><h3 style="margin:0">適配職缺方向建議</h3><span class="chip chip-real">已解鎖</span></div>
+        <div class="sub" style="margin:-4px 0 10px">根據 <b>${primaryResume ? primaryResume.label : "目前唯一一份履歷"}</b> 分析——換一份主要履歷，這裡會重新算</div>
         ${ALAN.directions.map((d,i)=>`<div class="dir dir-compact" data-dirtoggle="${i}" style="cursor:pointer">
           <div class="dn">
             <span class="dt">${d.t}</span>
@@ -796,14 +867,17 @@ function renderHome() {
           <div class="sub"><b>為什麼是你</b>　${d.why}</div>
           ` : ``}
         </div>`).join("")}
+        ${diagFeedbackHtml("home-directions")}
         <button class="linklike" id="toggleFitMore" type="button" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--fill)">${state.showFitMore ? "收合資產與短板 ↑" : "看你可能沒發現的資產與短板 →"}</button>
         ${state.showFitMore ? `
         <h3 style="margin-top:14px">你可能沒發現的資產</h3>
         ${(D.assets && D.assets.length ? D.assets : ALAN.assets).map(a=>`<div class="ast"><div class="cn">${a.t}</div><div class="sub">${a.d}</div></div>`).join("")}
+        ${diagFeedbackHtml("home-assets")}
         <h3 style="margin-top:14px">短板</h3>
         ${(D.gaps && D.gaps.length ? D.gaps : ALAN.gaps).map(g=>`<div class="ast">
           <div class="row between"><span class="cn">${g.t}</span><span class="tg ${g.fix==="補得起來"?"tg-fix":"tg-avoid"}">${g.fix}</span></div>
           <div class="sub">${g.d}</div></div>`).join("")}
+        ${diagFeedbackHtml("home-gaps")}
         ` : ``}
       </div>
       ` : lockCard(LOCKS[0])}
@@ -811,11 +885,18 @@ function renderHome() {
 }
 
 const MAX_RESUMES = 3;
+// 3 份上限只管「現役」履歷——超過上限要新增新版本時，不是真的刪掉舊的，是「封存」：
+// 移出現役列表、不占 3 份名額，但內容還在，可以回顧、可以還原。這是為了兌現主頁
+// 職涯軌跡卡片講的「職涯畫像、弱項都留在系統裡，沒有清空」，履歷全文也要做到一樣的承諾，
+// 不能只有分數／分析紀錄留著、履歷本文卻真的沒了。真的要永久刪除，只能從「已封存」區塊動手，
+// 那才是使用者明確表達「這份我真的不要了」的地方。
+function activeResumes() { return state.resumes.filter(r => !r.archived); }
+function archivedResumes() { return state.resumes.filter(r => r.archived); }
 
 function renderResumeView(r) {
   return `<div class="view">
     <button class="backlink" id="backFromResumeView">← 回到履歷列表</button>
-    <div class="h1">${r.primary ? `<span class="pritag">主要</span>` : ""}履歷</div>
+    <div class="h1">${r.primary ? `<span class="pritag">主要</span>` : ""}${r.archived ? `<span class="chip chip-mock" style="margin-right:6px">已封存</span>` : ""}履歷</div>
     <div class="card">
       <div class="row between">
         ${state.editingLabelId === r.id
@@ -823,8 +904,13 @@ function renderResumeView(r) {
           : `<div class="acctname" style="flex:1">${r.label}</div>`}
         <div style="display:flex;gap:4px">
           <button class="iconbtn" data-editlabel="${r.id}" title="改名">${state.editingLabelId === r.id ? "✓" : "✏️"}</button>
-          ${r.primary ? "" : `<button class="iconbtn" data-setpri="${r.id}" title="設為主要">☆</button>`}
-          <button class="iconbtn" data-delres="${r.id}">🗑️</button>
+          ${r.archived ? `
+            <button class="iconbtn" data-restoreres="${r.id}" title="還原成現役">↩</button>
+            <button class="iconbtn" data-permadelres="${r.id}" title="永久刪除">🗑️</button>
+          ` : `
+            ${r.primary ? "" : `<button class="iconbtn" data-setpri="${r.id}" title="設為主要">☆</button>`}
+            <button class="iconbtn" data-delres="${r.id}" title="封存（不是永久刪除）">📦</button>
+          `}
         </div>
       </div>
       <div class="sub" style="margin-top:6px">加入於 ${r.addedAt}</div>
@@ -866,14 +952,14 @@ function renderResume() {
     state.viewingResumeId = null;
   }
 
-  const rs = state.resumes, full = rs.length >= MAX_RESUMES;
+  const rs = activeResumes(), archived = archivedResumes(), full = rs.length >= MAX_RESUMES;
   const rows = rs.map((r) => `
     <div class="rec">
       <div class="row between" data-viewres="${r.id}" style="cursor:pointer;gap:8px">
         <span class="rt">${r.primary ? `<span class="pritag">主要</span>` : ""}${r.label}</span>
         <div style="display:flex;align-items:center;gap:4px;flex:none">
           ${r.primary ? "" : `<button class="iconbtn" data-setpri="${r.id}" title="設為主要">☆</button>`}
-          <button class="iconbtn" data-delres="${r.id}">🗑️</button>
+          <button class="iconbtn" data-delres="${r.id}" title="封存（不是永久刪除）">📦</button>
         </div>
       </div>
       <div class="sub" data-viewres="${r.id}" style="cursor:pointer;margin:0">加入於 ${r.addedAt}</div>
@@ -882,7 +968,7 @@ function renderResume() {
   return `
     <div class="view">
       <div class="h1">履歷</div>
-      <p class="sub">選填，最多 ${MAX_RESUMES} 份。放不同版本可以在投遞時分開記錄，之後就看得出哪一版比較有回應。</p>
+      <p class="sub">選填，現役最多 ${MAX_RESUMES} 份。放不同版本可以在投遞時分開記錄，之後就看得出哪一版比較有回應。滿了要換新版本時是「封存」不是刪除，舊履歷全文還在，隨時能回顧。</p>
 
       <div class="card">
         <div class="row between">
@@ -896,12 +982,30 @@ function renderResume() {
                <div class="et">還沒有履歷</div>
                <div class="sub" style="margin:4px 0 0">沒有履歷也能用，但上傳之後才會出現
                  <b>適配職缺方向建議</b>與<b>履歷調整方向</b>。</div>
-             </div>`}
+             </div>
+             <button class="btn block subtle" id="seedResumesBtn" style="margin-top:12px">帶入示範履歷（v1＋v5 兩版）→</button>`}
 
         ${full
-          ? `<div class="mock-note" style="margin-top:12px">已達 ${MAX_RESUMES} 份上限，要新增請先刪掉一份。</div>`
+          ? `<div class="mock-note" style="margin-top:12px">現役已達 ${MAX_RESUMES} 份上限，要新增新版本請先封存一份現役履歷。</div>`
           : `<button class="btn block" id="openAddResume" style="margin-top:12px">＋ 新增履歷</button>`}
       </div>
+
+      ${archived.length ? `
+      <div class="card">
+        <div class="row between"><h3 style="margin:0">已封存</h3><span class="chip chip-mock">${archived.length} 份</span></div>
+        <div class="sub">不占現役名額，內容還在，可以回顧或還原。</div>
+        ${archived.map(r => `
+        <div class="rec">
+          <div class="row between" data-viewres="${r.id}" style="cursor:pointer;gap:8px">
+            <span class="rt">${r.label}</span>
+            <div style="display:flex;align-items:center;gap:4px;flex:none">
+              <button class="iconbtn" data-restoreres="${r.id}" title="還原成現役">↩</button>
+              <button class="iconbtn" data-permadelres="${r.id}" title="永久刪除">🗑️</button>
+            </div>
+          </div>
+          <div class="sub" data-viewres="${r.id}" style="cursor:pointer;margin:0">加入於 ${r.addedAt}</div>
+        </div>`).join("")}
+      </div>` : ""}
     </div>`;
 }
 
@@ -912,7 +1016,7 @@ function renderJdListingPage() {
   return `
     <div class="view">
       <div class="h1">職缺匹配度分析</div>
-      <p class="sub">貼上一份 JD，AI 先指出落差、追問幾個問題，回答之後才會給匹配分數與面試前準備。每次分析都會存成一筆紀錄——點下面的紀錄可以繼續填答，或回顧存檔當時的內容。</p>
+      <p class="sub">貼上一份 JD，AI 先指出落差、追問幾個問題，回答之後才會給匹配分數與面試前準備。每次分析都會存成一筆紀錄——點下面的紀錄可以繼續填答，或回顧存檔當時的內容。<br>這一頁是「分析用」，還沒真的送出去；已經送出的職缺才會記在「投遞」分頁，兩邊靠履歷版本對得起來。</p>
       <div class="card">
         <h3>分析紀錄</h3>
         ${items.length ? `
@@ -931,10 +1035,11 @@ function renderJdListingPage() {
                 <button class="iconbtn" data-delanalysis="${r.id}" type="button" title="刪除這筆">🗑</button>
               </div>
             </div>
-            <div class="sub" style="margin:0">${r.createdAt}　已答 ${r.followupCount} 題追問${isCurrent ? "　· 目前這筆" : ""}</div>
+            <div class="sub" style="margin:0">${r.createdAt}　用 ${r.resumeVersion || "未指定版本"}　· 已答 ${r.followupCount} 題追問${isCurrent ? "　· 目前這筆" : ""}</div>
           </div>`;
         }).join("")}
-        ` : `<div class="emptybox"><div class="ei">🔎</div><div class="et">還沒有分析紀錄</div><div class="sub" style="margin:4px 0 0">按下面的按鈕開始第一筆。</div></div>`}
+        ` : `<div class="emptybox"><div class="ei">🔎</div><div class="et">還沒有分析紀錄</div><div class="sub" style="margin:4px 0 0">按下面的按鈕開始第一筆。</div></div>
+        <button class="btn block subtle" id="seedJdAnalysesBtn" style="margin-top:12px">帶入示範分析紀錄（3 筆）→</button>`}
         <button class="btn block" id="startJdAnalysis" style="margin-top:12px">開始新的分析 →</button>
       </div>
     </div>`;
@@ -967,7 +1072,7 @@ function renderAnalysisView(r) {
     <div class="h1">${r.company ? r.company + " · " + r.position : r.position}</div>
     <div class="card">
       <div class="row between"><h3 style="margin:0">JD 匹配分數（存檔時）</h3>${r.score === null ? `<span class="chip chip-mock">進行中</span>` : `<span class="chip chip-real">${r.score}</span>`}</div>
-      <div class="sub">存於 ${r.createdAt}，當時已答 ${r.followupCount} 題追問。這個分數是存檔當下凍結的，之後在「職缺」分頁的操作不會改到它。</div>
+      <div class="sub">存於 ${r.createdAt}，用<b>${r.resumeVersion || "未指定版本"}</b>分析，當時已答 ${r.followupCount} 題追問。這個分數是存檔當下凍結的，之後在「職缺」分頁的操作不會改到它。</div>
     </div>
 
     ${anaSection("jd", "當時貼的 JD 全文", `<textarea disabled style="min-height:160px">${r.jd}</textarea>`)}
@@ -980,6 +1085,7 @@ function renderAnalysisView(r) {
           ${f.answer.trim()
             ? `<div class="sub" style="margin-top:6px"><b>當時的回答</b>　${f.answer}</div>`
             : `<div class="sub" style="margin-top:6px">（當時未回答）</div>`}
+          ${diagFeedbackHtml("ana-" + r.id + "-followup-" + f.id)}
         </div>`).join("")}
     `) : ""}
 
@@ -988,6 +1094,7 @@ function renderAnalysisView(r) {
       <div class="fitrow"><span class="tg tg-強">符合</span><div>${r.fitStrong.map(x=>`<span class="pill ok">${x}</span>`).join("")}</div></div>
       <div class="fitrow"><span class="tg tg-中">證據薄</span><div>${r.fitWeak.map(x=>`<span class="pill mid">${x}</span>`).join("")}</div></div>
       <div class="fitrow"><span class="tg tg-弱">缺口</span><div>${r.fitMiss.map(x=>`<span class="pill bad">${x}</span>`).join("")}</div></div>
+      ${diagFeedbackHtml("ana-" + r.id + "-fit")}
     `)}
 
     ${anaSection("prep", `面試前準備（存檔時） <span class="chip chip-live">${planned}/${r.prep.length} 打算做</span>`, `
@@ -998,6 +1105,7 @@ function renderAnalysisView(r) {
           <div class="rm"><span class="chip">⏱ ${p.time}</span></div>
           <div class="sub"><b>完成條件</b>　${p.done}</div>
           <div class="sub"><b>對應缺口</b>　${p.gap}</div>
+          ${recFeedbackHtml("ana-" + r.id + "-prep-" + p.id)}
         </div>`).join("")}
     `)}
 
@@ -1006,11 +1114,13 @@ function renderAnalysisView(r) {
       <div class="hardq">${r.hardest.q}</div>
       <div class="sub" style="margin:8px 0"><b>為什麼</b>　${r.hardest.why}</div>
       ${r.hardest.how.map(h=>`<div class="sub" style="margin-bottom:6px">${h}</div>`).join("")}
+      ${diagFeedbackHtml("ana-" + r.id + "-hardest")}
     `)}
 
     ${anaSection("questions", "AI 猜這場會問的 8 題（存檔時）", `
       ${contentIsDemo ? demoContentNote() : ""}
       ${r.questions.map((q,i)=>`<div class="qq"><span class="n">${i+1}</span><div>${q}</div></div>`).join("")}
+      ${diagFeedbackHtml("ana-" + r.id + "-questions8")}
     `)}
     ` : ""}
   </div>`;
@@ -1076,6 +1186,7 @@ function renderJob() {
         <div class="fitrow"><span class="tg tg-強">符合</span><div>${currentFit().fitStrong.map(x=>`<span class="pill ok">${x}</span>`).join("")}</div></div>
         <div class="fitrow"><span class="tg tg-中">證據薄</span><div>${currentFit().fitWeak.map(x=>`<span class="pill mid">${x}</span>`).join("")}</div></div>
         <div class="fitrow"><span class="tg tg-弱">缺口</span><div>${currentFit().fitMiss.map(x=>`<span class="pill bad">${x}</span>`).join("")}</div></div>
+        ${diagFeedbackHtml("job-fit")}
       `)}
 
       ${jobSection("prep", `面試前準備 <span class="chip chip-live">${planned}/${J.prep.length} 打算做</span>`, `
@@ -1089,6 +1200,7 @@ function renderJob() {
             <div class="sub"><b>完成條件</b>　${p.done}</div>
             <div class="sub"><b>對應缺口</b>　${p.gap}</div>
             <div class="sub warnl"><b>會用上的時刻</b>　${p.when}</div>
+            ${recFeedbackHtml(p.id)}
           </div>`}).join("")}
       `)}
 
@@ -1097,17 +1209,20 @@ function renderJob() {
         <div class="hardq">${J.hardest.q}</div>
         <div class="sub" style="margin:8px 0"><b>為什麼</b>　${J.hardest.why}</div>
         ${J.hardest.how.map(h=>`<div class="sub" style="margin-bottom:6px">${h}</div>`).join("")}
+        ${diagFeedbackHtml("job-hardest")}
       `)}
 
       ${jobSection("questions", "AI 猜這場會問的 8 題", `
         ${meta.isDemo ? "" : demoContentNote()}
         <div class="sub">面試後請先到「面試後」分頁填實際被問的題，再回來比對。</div>
         ${J.questions.map((q,i)=>`<div class="qq"><span class="n">${i+1}</span><div>${q}</div></div>`).join("")}
+        ${diagFeedbackHtml("job-questions8")}
       `)}
 
       ${jobSection("resumeGaps", "履歷上講不清楚的地方", `
         ${meta.isDemo ? "" : demoContentNote()}
         ${J.resumeGaps.map(g=>`<div class="ast"><div class="cn">${g.t}</div><div class="sub">${g.d}</div></div>`).join("")}
+        ${diagFeedbackHtml("job-resumeGaps")}
       `)}
 
       ${unlocked("fitAdvice") ? jobSection("plan", `履歷調整方向 <span class="chip chip-live">週～月</span>`, `
@@ -1120,6 +1235,7 @@ function renderJob() {
             <div class="sub"><b>完成條件</b>　${p.done}</div>
             <div class="sub"><b>補的是</b>　${p.fix}</div>
             <div class="sub warnl"><b>不做的話</b>　${p.skip}</div>
+            ${recFeedbackHtml(p.id)}
           </div>`}).join("")}
         <h3 style="margin-top:14px">這些建議沒有涵蓋的</h3>
         ${ALAN.planUncovered.map(x=>`<div class="sub" style="margin-bottom:8px">${x}</div>`).join("")}
@@ -1139,6 +1255,7 @@ function renderQuestions() {
       <div class="card">
         <h3>資訊完整度：這幾塊還看不清楚</h3>
         ${D.completenessGaps.map(g => `<div class="ast"><div class="cn">${g.t}</div><div class="sub">${g.d}</div></div>`).join("")}
+        ${diagFeedbackHtml("job-completeness")}
       </div>
 
       <div class="card">
@@ -1148,6 +1265,7 @@ function renderQuestions() {
             <div class="rt">${f.q}</div>
             <div class="sub"><b>為什麼問這題</b>　${f.why}</div>
             <textarea class="full" data-followup="${f.id}" placeholder="在這裡回答…" style="margin-top:8px">${state.followupAnswers[f.id] || ""}</textarea>
+            ${diagFeedbackHtml("followup-" + f.id)}
           </div>`).join("")}
       </div>
 
@@ -1258,7 +1376,7 @@ function renderAfter() {
 // ================= 設定 =================
 
 function renderSettings() {
-  const n = state.applications.length, r = state.resumes.length;
+  const n = state.applications.length, r = activeResumes().length;
   return `
     <div class="view">
       <div class="h1">設定</div>
@@ -1270,6 +1388,36 @@ function renderSettings() {
           <div class="sub" style="margin:1px 0 0">已用 Google 帳號登入（僅供展示，非實際登入功能）</div>
         </div>
       </div>
+
+      ${(() => {
+        const s2024 = cycleSummary("2024"), s2026 = cycleSummary("2026");
+        if (!s2024 && !s2026) return "";
+        return `
+        <div class="card">
+          <div class="row between"><h3 style="margin:0">🧭 職涯軌跡</h3><span class="chip chip-mock">示範</span></div>
+          <div class="sub">${s2024 && s2026 ? "這不是你第一次用這個平台——分數不會每次都從零開始算" : "目前資料裡看得到的求職紀錄"}</div>
+          <div class="timeline" style="margin-top:12px">
+            ${s2024 ? `
+            <div class="tlitem"><div class="tldot"></div><div class="tlbody">
+              <div class="cn">${s2024.first.date}　開始${cycleOrdinalLabel("2024")}</div>
+              <div class="sub">v1 履歷起跳 <b>${s2024.first.fitScore} 分</b></div>
+            </div></div>
+            <div class="tlitem"><div class="tldot done"></div><div class="tlbody">
+              <div class="cn">${s2024.last.date}　${s2024.gotOffer ? "拿到 offer，入職" : "求職結束"}</div>
+              <div class="sub">投了 ${s2024.count} 家，分數已到 <b>${s2024.last.fitScore} 分</b>。結束後職涯畫像、弱項都留在系統裡，沒有清空</div>
+            </div></div>
+            <div class="tlitem"><div class="tldot mock"></div><div class="tlbody">
+              <div class="cn">在職期間</div>
+              <div class="sub">示範：持續留意機會，沒有主動投遞</div>
+            </div></div>` : ""}
+            ${s2026 ? `
+            <div class="tlitem"><div class="tldot active"></div><div class="tlbody">
+              <div class="cn">2026/${s2026.first.date}　${cycleOrdinalLabel("2026")}${s2024 ? " · 現在" : ""}</div>
+              <div class="sub">${s2024 ? `同一顆帳號回來，AI 已經記得 2024 年整理過的能力雷達與短板，這次 v1 起跳直接是 <b>${s2026.first.fitScore} 分</b>——比上次 v1 高 ${s2026.first.fitScore - s2024.first.fitScore} 分，不用重新從頭挖故事` : `v1 履歷起跳 <b>${s2026.first.fitScore} 分</b>`}</div>
+            </div></div>` : ""}
+          </div>
+        </div>`;
+      })()}
 
       <div class="card">
         <div class="swrow">
@@ -1290,6 +1438,12 @@ function renderSettings() {
       </div>
 
       <div class="card">
+        <h3>完整示範旅程</h3>
+        <div class="sub">一次帶入履歷（2 版）、職缺分析（3 筆）、投遞紀錄（兩次求職共 ${DEMO_APPS.length + DEMO_APPS_2024.length} 筆）——想快速看完整個「改履歷後分數上升、最後拿到 offer」的故事時用這個。平常自己一步步體驗的話不用按。</div>
+        <button class="btn block subtle" id="seedFullDemoBtn" style="margin-top:10px">帶入完整示範旅程 →</button>
+      </div>
+
+      <div class="card">
         <h3>重置</h3>
         <div class="sub">清掉之後要重新回答 Basic 5 題。這台裝置以外的地方沒有備份。</div>
         <button class="btn block danger" id="resetBtn">清除全部資料</button>
@@ -1297,16 +1451,319 @@ function renderSettings() {
     </div>`;
 }
 
-const DEMO_APPS = [
-  { company: "inline 樂排", position: "Senior Technical Program Manager", resumeVersion: "v2 整合經驗版", status: "進面試", date: "08/19" },
-  { company: "Appier", position: "Technical Product Manager", resumeVersion: "v2 整合經驗版", status: "被查看", date: "08/17" },
-  { company: "Pinkoi", position: "Product Manager", resumeVersion: "v2 整合經驗版", status: "被查看", date: "08/15" },
-  { company: "iCHEF", position: "Product Manager", resumeVersion: "v1 原版", status: "已婉拒/未錄取", date: "08/11" },
-  { company: "Gogolook", position: "Technical PM", resumeVersion: "v1 原版", status: "投遞・無回應", date: "08/08" },
-  { company: "KKday", position: "Senior PM", resumeVersion: "v1 原版", status: "投遞・無回應", date: "08/06" },
-  { company: "Dcard", position: "Product Manager", resumeVersion: "v1 原版", status: "被查看", date: "08/04" },
-  { company: "17LIVE", position: "Technical Program Manager", resumeVersion: "v1 原版", status: "投遞・無回應", date: "08/01" },
+// fitScore：這批職缺分析時的適配分數（jdMatchScore 的存檔值）。刻意設計成 5 個履歷版本，
+// 每一版都是「上一版投遞完，AI 指出一個具體缺口 → 針對那個缺口改」的結果，不是隨便疊加版號：
+//   v1 原版                　→ AI 指出：條列工作內容沒有數字，講不出成果大小
+//   v2 加量化成果           　→ AI 指出：JD 常見要求跨部門協調，履歷完全沒提過怎麼跟其他角色合作
+//   v3 補跨部門協作案例      → AI 指出：JD 常見要求 0 到 1 經驗，履歷都是既有功能優化，講不出「從無到有」的判斷力
+//   v4 加 0-1 經驗框架       → AI 指出：每份投遞開頭都一樣，看得出來是同一份履歷海投，沒有針對這份 JD 客製
+//   v5 針對 JD 客製開頭      → 分數持續上升，最後拿到面試、談到 offer
+// 分數與結果照這條線逐步上升，用來示範「行動推薦」驗證判準（改履歷後分數有沒有上升、
+// 投遞後面試邀請有沒有提升），不是隨機湊的數字。
+// 陣列順序＝畫面上「投遞紀錄」清單的顯示順序（最新在最上面），跟時間序剛好相反；
+// fitTrendChart() 畫圖時會自己依 date 重新排成時間序，兩邊不用手動對齊。
+// cycle 標記「這是第幾次求職」——這個 app 主打的是「持續累積越懂你」，不是找一次工作就
+// 用完丟掉，所以投遞紀錄要能分年份/分次看，主頁的職涯軌跡也要能從這個欄位算出來，
+// 不能只是寫死的敘述文字。CYCLES 定義每次求職的中繼資料，順序＝畫面上由新到舊排列。
+const CYCLES = [
+  { id: "2026", sub: "2026/08 · 現在", status: "active" },
+  { id: "2024", sub: "2024/09 - 2024/12 · 已結束，拿到 offer 入職", status: "done" },
 ];
+
+// 「第幾次求職」是依「目前資料裡實際存在幾個 cycle」算出來的，不是寫死每個 cycle id
+// 對應第幾次——分批帶入示範資料時如果只補了 2026、沒有 2024 的歷史，畫面不能還講
+// 「這是第 2 次」，因為使用者根本看不到、也驗證不了有第 1 次。只有 1 個 cycle 時
+// 一律講「這次求職」，避免講出一個現有資料撐不起來的宣稱。
+function presentCycleIds() {
+  return [...new Set(state.applications.map(a => a.cycle).filter(Boolean))].sort();
+}
+function cycleOrdinalLabel(cycleId) {
+  const present = presentCycleIds();
+  const idx = present.indexOf(cycleId);
+  if (idx === -1) return "求職紀錄";
+  return present.length > 1 ? `第 ${idx + 1} 次求職` : "這次求職";
+}
+
+const DEMO_APPS = [
+  { company: "Cathay FinTech", position: "Senior Product Manager", resumeVersion: "v5 針對 JD 客製開頭", status: "收到 offer", date: "08/26", fitScore: 93, cycle: "2026" },
+  { company: "TaskWorld", position: "Technical Program Manager", resumeVersion: "v5 針對 JD 客製開頭", status: "進面試", date: "08/25", fitScore: 90, cycle: "2026" },
+  { company: "inline 樂排", position: "Senior Technical Program Manager", resumeVersion: "v5 針對 JD 客製開頭", status: "被查看", date: "08/24", fitScore: 86, cycle: "2026" },
+
+  { company: "GOGOX", position: "Senior PM", resumeVersion: "v4 加 0-1 經驗框架", status: "進面試", date: "08/23", fitScore: 81, cycle: "2026" },
+  { company: "Appier", position: "Technical Product Manager", resumeVersion: "v4 加 0-1 經驗框架", status: "被查看", date: "08/22", fitScore: 78, cycle: "2026" },
+
+  { company: "Shopline", position: "Product Manager", resumeVersion: "v3 補跨部門協作案例", status: "已婉拒/未錄取", date: "08/21", fitScore: 75, cycle: "2026" },
+  { company: "91APP", position: "Technical PM", resumeVersion: "v3 補跨部門協作案例", status: "被查看", date: "08/20", fitScore: 73, cycle: "2026" },
+  { company: "Pinkoi", position: "Product Manager", resumeVersion: "v3 補跨部門協作案例", status: "被查看", date: "08/19", fitScore: 71, cycle: "2026" },
+
+  { company: "Cake", position: "Product Manager", resumeVersion: "v2 加量化成果", status: "被查看", date: "08/18", fitScore: 68, cycle: "2026" },
+  { company: "iCHEF", position: "Product Manager", resumeVersion: "v2 加量化成果", status: "已婉拒/未錄取", date: "08/17", fitScore: 66, cycle: "2026" },
+  { company: "Gogolook", position: "Technical PM", resumeVersion: "v2 加量化成果", status: "被查看", date: "08/16", fitScore: 64, cycle: "2026" },
+
+  { company: "Dcard", position: "Product Manager", resumeVersion: "v1 原版", status: "被查看", date: "08/15", fitScore: 60, cycle: "2026" },
+  { company: "17LIVE", position: "Technical Program Manager", resumeVersion: "v1 原版", status: "投遞・無回應", date: "08/14", fitScore: 58, cycle: "2026" },
+  { company: "KKday", position: "Senior PM", resumeVersion: "v1 原版", status: "投遞・無回應", date: "08/13", fitScore: 56, cycle: "2026" },
+];
+
+// 第 1 次求職（2024）的示範資料——跟主頁「累積使用歷程」講的 46→91 分是同一批數字，
+// 不是兩邊各自編一套。最後一筆是 offer，對應「入職」這個里程碑；這批資料存在的目的
+// 就是讓「求職紀錄」分頁能真的按年份分組，而不是只有一段敘述文字說你用過兩次。
+const DEMO_APPS_2024 = [
+  { company: "某生活服務新創", position: "Associate PM", resumeVersion: "2024·v1 起點版", status: "投遞・無回應", date: "2024/09/03", fitScore: 46, cycle: "2024" },
+  { company: "某電商平台", position: "Associate PM", resumeVersion: "2024·v1 起點版", status: "被查看", date: "2024/09/20", fitScore: 52, cycle: "2024" },
+  { company: "某餐飲科技新創", position: "Product Coordinator", resumeVersion: "2024·v2 加案例版", status: "被查看", date: "2024/10/10", fitScore: 68, cycle: "2024" },
+  { company: "某物流新創", position: "Associate PM", resumeVersion: "2024·v2 加案例版", status: "已婉拒/未錄取", date: "2024/10/28", fitScore: 74, cycle: "2024" },
+  { company: "某外送平台", position: "Associate PM", resumeVersion: "2024·v3 定案版", status: "進面試", date: "2024/11/15", fitScore: 85, cycle: "2024" },
+  { company: "某外送平台", position: "Associate PM", resumeVersion: "2024·v3 定案版", status: "收到 offer", date: "2024/12/05", fitScore: 91, cycle: "2024" },
+];
+
+// v1 是「改之前」的示範履歷：條列式、沒有數字、沒有跨部門案例——刻意寫得薄，
+// 對照 webapp/demo-data.sample.json 裡 v5（改之後）的完整版本，兩份放在一起
+// 「履歷」分頁才看得出來改了什麼，不是只有分數在動。
+const DEMO_RESUME_V1_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+外送 App 平台公司｜Associate Product Manager｜2023.01 - 現在
+・負責結帳流程與轉換率優化
+・協助處理付款方式、地址偵測、訂單通知等功能
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・負責社群內容規劃與發布
+・協助執行行銷活動
+
+【技能】
+SQL、Figma、Amplitude、Notion
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
+const DEMO_RESUME_V2_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+外送 App 平台公司｜Associate Product Manager｜2023.01 - 現在
+・負責結帳流程與轉換率優化，獨立抓出結帳頁流失率異常，定位到是地圖 API 延遲造成而非 UI 問題，修復後結帳完成率提升 6%
+・撰寫並上線 6 份完整 PRD，涵蓋付款方式擴充、地址自動偵測、訂單狀態通知優化等既有功能迭代
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・負責社群內容規劃與發布
+・協助執行行銷活動
+
+【技能】
+SQL、Figma、Amplitude、Notion
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
+const DEMO_RESUME_V3_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+外送 App 平台公司｜Associate Product Manager｜2023.01 - 現在
+・負責結帳流程與轉換率優化，獨立抓出結帳頁流失率異常，定位到是地圖 API 延遲造成而非 UI 問題，修復後結帳完成率提升 6%
+・撰寫並上線 6 份完整 PRD，涵蓋付款方式擴充、地址自動偵測、訂單狀態通知優化等既有功能迭代
+・每週固定跟工程、設計、行銷三個窗口對齊優先順序，曾協調設計端的互動效果與工程時程衝突，依商業影響大小決定取捨範圍
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・每日追蹤社群貼文成效數字，半年後主動申請調任營運企劃
+・轉任後開始撰寫站內活動規格，與行銷、視覺協作執行檔期活動
+
+【技能】
+SQL、Figma、Amplitude、Notion
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
+const DEMO_RESUME_V4_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+外送 App 平台公司｜Associate Product Manager｜2023.01 - 現在
+・負責結帳流程與轉換率優化，獨立抓出結帳頁流失率異常，定位到是地圖 API 延遲造成而非 UI 問題，修復後結帳完成率提升 6%
+・撰寫並上線 6 份完整 PRD，涵蓋付款方式擴充、地址自動偵測、訂單狀態通知優化等既有功能迭代
+・每週固定跟工程、設計、行銷三個窗口對齊優先順序，曾協調設計端的互動效果與工程時程衝突，依商業影響大小決定取捨範圍
+・side project：從 0 到 1 規劃過一個內部工具的最小可行版本，從訪談 3 位使用者到定義規格範圍，獨立跑完一輪
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・每日追蹤社群貼文成效數字，半年後主動申請調任營運企劃
+・轉任後開始撰寫站內活動規格，與行銷、視覺協作執行檔期活動
+
+【技能】
+SQL、Figma、Amplitude、Notion
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
+// 2024 年那次求職的履歷（示範）——比 2026 這輪更早期，職稱與內容都刻意寫得比較單薄，
+// 對照主頁職涯軌跡卡片講的「v1 起跳 46 分」。三版都封存，不占現役 3 份名額，但點進履歷
+// 分頁的「已封存」還是看得到全文，兌現「職涯畫像、弱項都留在系統裡，沒有清空」的承諾。
+const DEMO_RESUME_2024_V1_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・負責社群貼文發布
+・協助行銷活動執行
+
+【技能】
+Figma、Notion
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
+const DEMO_RESUME_2024_V2_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・每日追蹤社群貼文成效數字，找內容規律
+・協助行銷活動執行，曾主導一檔中型檔期活動的內容規劃
+
+【技能】
+Figma、Notion、基礎 SQL
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
+const DEMO_RESUME_2024_V3_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・每日追蹤社群貼文成效數字，找內容規律，半年後主動申請調任營運企劃
+・轉任後開始撰寫站內活動規格，主導一檔中型檔期活動，與行銷、視覺協作執行
+・活動期間站內流量較前一檔提升，開始對「數字→規格」的轉譯工作產生興趣
+
+【技能】
+Figma、Notion、SQL
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
+// 職缺分析紀錄的示範資料，跟 DEMO_APPS 裡同一批公司對上（KKday v1／Pinkoi v3／Cathay v5），
+// 讓「帶入示範紀錄」一次把履歷、職缺分析、投遞三個分頁都填成同一條故事線，不會只有
+// 投遞紀錄有東西、履歷跟職缺卻是空的。fitStrong/fitWeak/fitMiss/questions/prep/hardest
+// 沿用 ALAN_JOB 的示範內容（同一份 JD 的落差分析邏輯拿來套三筆不同進度的紀錄）。
+// 示範用的追問回答，跟 demo-data.sample.json 裡 job.diagnosis.followups 的 id 對上。
+// 內容刻意呼應「履歷調整方向」的 4 個缺口（量化成果／團隊分工／跨部門協調／0到1框架），
+// 讓「AI 追問 → 使用者回答 → 履歷怎麼改」這條線在示範資料裡看得出因果，不是三段各自獨立的空話。
+const DEMO_FOLLOWUP_ANSWERS = {
+  f1: "結帳頁那個案例，流失率原本沒量測，後來定位出是地圖 API 延遲造成，修復後結帳完成率提升了 6%；PRD 上線的部分，我可以補上每份規格對應的上線後數字變化。",
+  f2: "團隊有我、一位後端工程師、一位資料工程師。我負責定義問題範圍跟排優先序，後端負責修復方案，資料工程師協助驗證修復後的數字變化。",
+  f3: "有，之前每週要跟工程、設計、行銷三個窗口對齊一次。遇過設計想要的互動效果會拖工程時程，我會先確認對商業影響的大小，再決定要不要為了時程砍掉部分互動細節。",
+  f4: "我會先找有沒有類似情境的現有數據可以參考，訪談 2-3 個可能的使用者，再寫一份最小可行的規格範圍，避免一開始就做太大。",
+};
+
+function demoJdAnalysisRecords() {
+  const J = ALAN_JOB, D = J.diagnosis;
+  const mk = (over) => Object.assign({
+    isDemo: true,
+    followupCount: D.followups.length,
+    followups: D.followups.map(f => ({ q: f.q, why: f.why, answer: DEMO_FOLLOWUP_ANSWERS[f.id] || "" })),
+    fitStrong: J.fitStrong, fitWeak: J.fitWeak, fitMiss: J.fitMiss,
+    hardest: J.hardest, questions: J.questions,
+    prep: J.prep.map(p => Object.assign({}, p, { planned: false })),
+  }, over);
+  return [
+    mk({ id: "jd-demo-1", jd: "（示範）KKday 誠徵 Senior PM，負責站內轉換率優化與會員成長策略。", company: "KKday", position: "Senior PM", resumeVersion: "v1 原版", score: 56, createdAt: "2026/08/13 10:00:00", createdAtTs: 1755057600000 }),
+    mk({ id: "jd-demo-2", jd: "（示範）Pinkoi 誠徵 Product Manager，需具備跨部門協調經驗，主導過完整專案。", company: "Pinkoi", position: "Product Manager", resumeVersion: "v3 補跨部門協作案例", score: 71, createdAt: "2026/08/19 10:00:00", createdAtTs: 1755576000000 }),
+    mk({ id: "jd-demo-3", jd: "（示範）Cathay FinTech 誠徵 Senior Product Manager，需具備 0 到 1 專案經驗與跨部門領導能力。", company: "Cathay FinTech", position: "Senior Product Manager", resumeVersion: "v5 針對 JD 客製開頭", score: 93, createdAt: "2026/08/26 10:00:00", createdAtTs: 1756180800000 }),
+  ];
+}
+
+// 主頁「帶入示範紀錄」按下去，履歷／職缺／投遞三個分頁要一起變豐富，不能只有投遞
+// 有東西、履歷跟職缺卻還是空的——那樣使用者會覺得資料是憑空冒出來的。
+// 三個分頁各自的示範資料，拆成獨立函式——履歷／職缺分析／投遞可以各自分開帶入
+// （在自己的分頁按各自的按鈕，一次只補一塊），內容跟設定裡「完整示範旅程」一鍵
+// 帶入的完全一樣，只是拆開來看，兩種路徑最後長出來的資料要對得起來。
+// 履歷版本要跟 DEMO_APPS／demoJdAnalysisRecords 裡引用的版本數對得起來——這批投遞紀錄
+// 橫跨 v1~v5 五個版本，履歷分頁就該有五份，不能只帶 2 份、卻讓投遞紀錄講得好像有 5 份。
+// 現役上限是 3，所以 v1、v2 封存（已經被後面版本取代），v3~v5 留在現役，v5 是主要版本。
+function seedDemoResumes() {
+  state.resumes = [
+    { id: "r-demo-v1", label: "v1 原版", text: DEMO_RESUME_V1_TEXT, addedAt: "2026/08/13", primary: false, archived: true },
+    { id: "r-demo-v2", label: "v2 加量化成果", text: DEMO_RESUME_V2_TEXT, addedAt: "2026/08/16", primary: false, archived: true },
+    { id: "r-demo-v3", label: "v3 補跨部門協作案例", text: DEMO_RESUME_V3_TEXT, addedAt: "2026/08/19", primary: false },
+    { id: "r-demo-v4", label: "v4 加 0-1 經驗框架", text: DEMO_RESUME_V4_TEXT, addedAt: "2026/08/22", primary: false },
+    { id: "r-demo-v5", label: "v5 針對 JD 客製開頭", text: ALAN.resumeText, addedAt: "2026/08/24", primary: true },
+  ];
+  state.resume = state.resumes.find(r => r.primary).text;
+  saveState();
+}
+// 2024 年那次求職的履歷，只有「完整示範旅程」會帶入——分批體驗（單獨在履歷分頁按按鈕）
+// 只補這次求職，不夾帶歷史週期，理由跟 DEMO_APPS_2024 上面那則註解一樣。三版全部封存。
+function seedDemoResumes2024() {
+  state.resumes.push(
+    { id: "r-demo-2024-v1", label: "2024·v1 起點版", text: DEMO_RESUME_2024_V1_TEXT, addedAt: "2024/09/03", primary: false, archived: true },
+    { id: "r-demo-2024-v2", label: "2024·v2 加案例版", text: DEMO_RESUME_2024_V2_TEXT, addedAt: "2024/10/10", primary: false, archived: true },
+    { id: "r-demo-2024-v3", label: "2024·v3 定案版", text: DEMO_RESUME_2024_V3_TEXT, addedAt: "2024/11/15", primary: false, archived: true },
+  );
+  saveState();
+}
+function seedDemoJdAnalyses() {
+  state.jdAnalyses = demoJdAnalysisRecords();
+  saveState();
+}
+// 分批帶入（履歷／職缺分析／投遞各自的按鈕）只補「這次求職」（2026），不會連帶把
+// 2024 年那次求職的歷史資料也一起塞進來——歷史累積的故事只有在按「完整示範旅程」
+// 一次看全貌時才出現，分批體驗時維持單純，不要一開始就爆雷後面的劇情。
+function seedDemoApplications() {
+  state.applications = DEMO_APPS.map((a, i) => Object.assign({ id: "app-demo-" + i, jd: "" }, a));
+  saveState();
+}
+function seedDemoApplicationsWithHistory() {
+  const all = [...DEMO_APPS, ...DEMO_APPS_2024];
+  state.applications = all.map((a, i) => Object.assign({ id: "app-demo-" + i, jd: "" }, a));
+  saveState();
+}
+function seedFullDemoJourney() {
+  seedDemoResumes();
+  seedDemoResumes2024();
+  seedDemoJdAnalyses();
+  seedDemoApplicationsWithHistory();
+}
+
+// 目前這次求職＝資料裡看得到的最新 cycle。統計卡（漏斗、走勢圖、版本×成效）都只看
+// 這次求職的資料，不會把 2024 跟 2026 兩次求職的分數混在同一條線上比——那是兩份不同
+// 的 JD 脈絡，混在一起比較沒有意義。求職紀錄清單則兩次都會列出來，方便回顧。
+function currentCycleId() {
+  const ids = [...new Set(state.applications.map(a => a.cycle).filter(Boolean))];
+  if (!ids.length) return null;
+  return ids.sort().reverse()[0];
+}
+function currentCycleApps() {
+  const cid = currentCycleId();
+  return cid ? state.applications.filter(a => a.cycle === cid) : state.applications;
+}
+// 給主頁「職涯軌跡」用：算出某次求職的第一筆／最後一筆（依日期排序），數字直接從
+// DEMO_APPS／DEMO_APPS_2024 這個單一資料來源算出來，不會跟卡片上顯示的文字兜不起來。
+function cycleSummary(cycleId) {
+  const items = state.applications.filter(a => a.cycle === cycleId).slice().sort((a, b) => a.date.localeCompare(b.date));
+  if (!items.length) return null;
+  return { first: items[0], last: items[items.length - 1], count: items.length, gotOffer: items.some(a => a.status === "收到 offer") };
+}
 
 const FUNNEL = [
   { k: "投遞", of: () => true },
@@ -1316,7 +1773,7 @@ const FUNNEL = [
 ];
 
 function appStats() {
-  const A = state.applications;
+  const A = currentCycleApps();
   const funnel = FUNNEL.map((f) => ({ k: f.k, n: A.filter(f.of).length }));
   const byVer = {};
   A.forEach((a) => {
@@ -1329,8 +1786,92 @@ function appStats() {
   return { funnel, byVer, total: A.length };
 }
 
+// 適配分數走勢：X 軸是投遞時間序（用 date 字串排序，同月份用 MM/DD 字典序剛好正確），
+// Y 軸是分析當下的 jdMatchScore。每個點依履歷版本上色，最後一點如果拿到面試/offer
+// 會特別標出來——這張圖直接對應「改履歷後分數有沒有上升、投遞後面試邀請有沒有提升」
+// 這兩個驗證判準，是 renderAppDash() 裡最上面那張卡。
+const TREND_PALETTE = ["#0E7C86", "#5856D6", "#FF9500", "#FF2D55", "#248A3D", "#007AFF"];
+function fitPointDetailHtml(p) {
+  return `<b>${p.company} · ${p.position}</b><br>用 ${p.resumeVersion}　${p.date}　<b>${p.fitScore} 分</b>　${p.status}`;
+}
+
+// 這是手機外框 app，滑鼠 hover 在真的手機上不存在，所以用「點一下」而不是原生
+// SVG <title>（那個要 hover 才會跳，觸控裝置上根本點不出來）。點擊直接改
+// #fitDetailBox 的文字，不整頁重render，滑動位置也不會跳掉。
+function fitTrendChart(apps) {
+  const pts = apps.filter(a => typeof a.fitScore === "number").slice().sort((a, b) => a.date.localeCompare(b.date));
+  if (pts.length < 2) return "";
+  const W = 320, H = 130, PAD = 22;
+  const min = Math.min(...pts.map(p => p.fitScore)), max = Math.max(...pts.map(p => p.fitScore));
+  const spanY = Math.max(1, max - min);
+  const x = (i) => PAD + (i * (W - PAD * 2)) / (pts.length - 1);
+  const y = (v) => H - PAD - ((v - min) / spanY) * (H - PAD * 2);
+  // 履歷版本照第一次出現的順序固定配色，同一版在整張圖上顏色一致
+  const versions = [...new Set(pts.map(p => p.resumeVersion))];
+  const colorFor = (v) => TREND_PALETTE[versions.indexOf(v) % TREND_PALETTE.length];
+  const isGood = (a) => ["進面試", "收到 offer"].includes(a.status);
+  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(p.fitScore).toFixed(1)}`).join(" ");
+  const last = pts.length - 1;
+  const dots = pts.map((p, i) => `
+    <circle class="fitdot" data-fitdetail="${encodeURIComponent(fitPointDetailHtml(p))}"
+      cx="${x(i).toFixed(1)}" cy="${y(p.fitScore).toFixed(1)}" r="9" fill="transparent" style="cursor:pointer"/>
+    <circle class="fitdotv" cx="${x(i).toFixed(1)}" cy="${y(p.fitScore).toFixed(1)}" r="${isGood(p) ? 5.5 : 4}" fill="${colorFor(p.resumeVersion)}" ${isGood(p) ? 'stroke="#fff" stroke-width="1.5"' : "stroke=\"none\""} style="pointer-events:none"/>
+    <text x="${x(i).toFixed(1)}" y="${(y(p.fitScore) - 11).toFixed(1)}" text-anchor="middle" font-size="10" fill="var(--label2)" style="pointer-events:none">${p.fitScore}</text>
+  `).join("");
+  const legend = versions.map(v => `<span class="sub" style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;margin-bottom:4px"><i style="width:8px;height:8px;border-radius:50%;background:${colorFor(v)};display:inline-block;flex:none"></i>${v}</span>`).join("");
+  return `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      <path d="${line}" fill="none" stroke="var(--fill)" stroke-width="6" stroke-linecap="round"/>
+      <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      ${dots}
+    </svg>
+    <div class="sub" id="fitDetailBox" style="margin-top:8px;min-height:32px">👆 點一個點看是投了哪裡、用哪版履歷——${fitPointDetailHtml(pts[last])}</div>
+    <div style="margin-top:6px;display:flex;flex-wrap:wrap">${legend}</div>
+  `;
+}
+
+// 點一下走勢圖上的點，更新下面的細節文字＋把選中的點加粗一點作為回饋。
+// 用 setAttribute 直接改 DOM，不觸發 render()，滑動位置不會跳掉。
+function wireFitTrend() {
+  document.getElementById("screen").querySelectorAll(".fitdot").forEach((c) => {
+    c.addEventListener("click", () => {
+      const box = document.getElementById("fitDetailBox");
+      if (box) box.innerHTML = decodeURIComponent(c.dataset.fitdetail);
+      const svg = c.closest("svg");
+      svg.querySelectorAll(".fitdotv").forEach((v) => v.setAttribute("stroke-width", v.getAttribute("stroke") === "none" ? "0" : "1.5"));
+      const vis = c.nextElementSibling;
+      if (vis && vis.classList.contains("fitdotv")) {
+        vis.setAttribute("stroke", "var(--accent-d)");
+        vis.setAttribute("stroke-width", "2.5");
+      }
+    });
+  });
+}
+
+// 主觀感受：讚/踩（+ 履歷調整方向／面試前準備額外有 1-5 星），對應驗證計畫
+// 「行動推薦」判準 a。共用一個 wiring，任何分頁只要畫面上有這兩種 data 屬性
+// 就會生效，不用每個分頁各自重寫一次事件綁定。
+function wireRecFeedback() {
+  const screen = document.getElementById("screen");
+  screen.querySelectorAll("[data-recreact]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const [id, dir] = btn.dataset.recreact.split(":");
+      state.recAdoption[id] = Object.assign({}, state.recAdoption[id], { tried: true, liked: dir === "up" });
+      saveState(); render();
+    });
+  });
+  screen.querySelectorAll("[data-recstar]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const [id, n] = btn.dataset.recstar.split(":");
+      state.recAdoption[id] = Object.assign({}, state.recAdoption[id], { tried: true, rating: Number(n) });
+      saveState(); render();
+    });
+  });
+}
+
 function renderAppDash() {
   const s = appStats();
+  const trend = fitTrendChart(currentCycleApps());
   const max = s.funnel[0].n || 1;
   const vers = Object.entries(s.byVer).sort((a, b) => b[1].n - a[1].n);
   const best = vers.length > 1
@@ -1338,6 +1879,13 @@ function renderAppDash() {
     : null;
 
   return `
+    ${trend ? `
+    <div class="card">
+      <h3>適配分數走勢</h3>
+      <div class="sub">每筆投遞分析當下的 JD 匹配分數，依時間排列——改了履歷之後分數有沒有真的上升，看這張圖</div>
+      ${trend}
+    </div>` : ""}
+
     <div class="card">
       <div class="row between"><h3 style="margin:0">投遞漏斗</h3>
         <span class="chip chip-real">${s.total} 筆</span></div>
@@ -1395,11 +1943,8 @@ function renderAddAppView() {
     </div>`;
 }
 
-function renderApps() {
-  if (state.addingApp) return renderAddAppView();
-
-  const s = computeStats();
-  const rows = state.applications.map((a) => `
+function appRowHtml(a) {
+  return `
     <div class="approw" style="flex-direction:column;align-items:stretch;gap:8px">
       <div class="row between">
         <span class="co"><span class="status-dot ${statusDotClass(a.status)}"></span>${a.company} · ${a.position}</span>
@@ -1414,28 +1959,58 @@ function renderApps() {
             ? `<button class="btn small ${state.afterAppId===a.id && state.actualLocked ? "subtle" : ""}" data-after="${a.id}">${state.afterAppId===a.id && state.actualLocked ? "✓ 已填回饋" : "↩ 填面試後回饋"}</button>`
             : `<span class="st">${a.date || ""}</span>`}
       </div>
-    </div>`).join("");
+    </div>`;
+}
+
+// 求職紀錄依 cycle 分組、由新到舊——這個 app 主打的是持續累積使用，不是找一次工作
+// 用完就丟，所以紀錄要看得出「這是第幾次求職」，不能是一條不分年份的流水帳。
+function renderAppsByCycle() {
+  const grouped = {};
+  state.applications.forEach(a => {
+    const cid = a.cycle || "未分類";
+    (grouped[cid] = grouped[cid] || []).push(a);
+  });
+  const order = [...CYCLES.map(c => c.id), "未分類"].filter(id => grouped[id]);
+  return order.map(cid => {
+    const meta = CYCLES.find(c => c.id === cid);
+    const items = grouped[cid];
+    return `
+      <div class="card">
+        <div class="row between">
+          <h3 style="margin:0">${meta ? cycleOrdinalLabel(cid) : "未分類紀錄"}</h3>
+          <span class="chip ${meta && meta.status === "active" ? "chip-live" : "chip-mock"}">${items.length} 筆</span>
+        </div>
+        ${meta ? `<div class="sub" style="margin-bottom:8px">${meta.sub}</div>` : ""}
+        <div class="applist">${items.map(appRowHtml).join("")}</div>
+      </div>`;
+  }).join("");
+}
+
+function renderApps() {
+  if (state.addingApp) return renderAddAppView();
+
+  const s = computeStats();
 
   return `
     <div class="view">
       <div class="h1">投遞紀錄</div>
-      <p class="sub">這一塊要回來更新才會長出東西——它量的是累積，不是單次。</p>
+      <p class="sub">這一塊要回來更新才會長出東西——它量的是累積，不是單次。跟「職缺」分頁的差別：那邊是分析用、還沒送出去；這裡是已經真的送出去、綁定用了哪一版履歷、要追蹤後續結果的地方。分不同次求職記錄，不是找到一次工作就結束。</p>
 
       ${state.applications.length ? renderAppDash() : ""}
-      ${s.topRole ? `<div class="card"><h3>🎯 目前浮現的目標</h3><div class="sub">投遞最集中的職能</div><div class="h1" style="margin:0">${s.topRole[0]} <span class="chip chip-live">${s.topRole[1]}/${s.apps} 筆</span></div></div>` : ""}
+      ${s.topRole ? `<div class="card"><h3>🎯 目前浮現的目標</h3><div class="sub">這次求職投遞最集中的職能</div><div class="h1" style="margin:0">${s.topRole[0]} <span class="chip chip-live">${s.topRole[1]}/${s.apps} 筆</span></div></div>` : ""}
+
+      ${state.applications.length ? renderAppsByCycle() : `
       <div class="card">
         <h3>投遞紀錄</h3>
-        ${state.applications.length ? `
-        <div class="sub">共 ${state.applications.length} 筆</div>
-        <div class="applist">${rows}</div>
-        ` : `<div class="emptybox">
-               <div class="ei">📮</div>
-               <div class="et">還沒有投遞紀錄</div>
-               <div class="sub" style="margin:4px 0 0">新增第一筆會解鎖<b>投遞結果、進度數據表</b>。</div>
-             </div>
-             <button class="btn block subtle" id="seedAppsBtn" style="margin-top:12px">帶入 8 筆示範紀錄 →</button>`}
+        <div class="emptybox">
+          <div class="ei">📮</div>
+          <div class="et">還沒有投遞紀錄</div>
+          <div class="sub" style="margin:4px 0 0">新增第一筆會解鎖<b>投遞結果、進度數據表</b>。</div>
+        </div>
+        <button class="btn block subtle" id="seedAppsBtn" style="margin-top:12px">帶入示範投遞紀錄（${DEMO_APPS.length} 筆）→</button>
         <button class="btn block" id="openAddApp" style="margin-top:12px">＋ 新增投遞紀錄</button>
-      </div>
+      </div>`}
+      ${state.applications.length ? `<button class="btn block" id="openAddApp" style="margin-top:4px">＋ 新增投遞紀錄</button>` : ""}
     </div>
   `;
 }
@@ -1566,6 +2141,10 @@ function wireTab() {
   const screen = document.getElementById("screen");
 
   screen.querySelectorAll("[data-goto]").forEach((btn) => btn.addEventListener("click", () => { state.tab = btn.dataset.goto; render(); }));
+  screen.querySelectorAll("[data-scrollto]").forEach((btn) => btn.addEventListener("click", () => {
+    const target = document.getElementById(btn.dataset.scrollto);
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }));
 
   if (state.tab === "validation") {
     document.getElementById("backFromValidation").addEventListener("click", () => {
@@ -1583,6 +2162,8 @@ function wireTab() {
     document.getElementById("editBasicsBtn").addEventListener("click", () => {
       state.tab = "editBasics"; render();
     });
+    wireFitTrend();
+    wireRecFeedback();
     screen.querySelectorAll("[data-homeviewjd]").forEach((el2) => {
       el2.addEventListener("click", () => {
         state.viewingAnalysisId = el2.dataset.homeviewjd;
@@ -1624,14 +2205,20 @@ function wireTab() {
   }
 
   if (state.tab === "resume") {
+    const seedRes = document.getElementById("seedResumesBtn");
+    if (seedRes) seedRes.addEventListener("click", () => {
+      seedDemoResumes();
+      toast("🔓 已帶入示範履歷（v1＋v5）");
+      render();
+    });
     const lab = document.getElementById("resLabel"), txt = document.getElementById("resText");
     if (lab) lab.addEventListener("input", () => { state.draftLabel = lab.value; saveState(); });
     if (txt) txt.addEventListener("input", () => { state.draftText = txt.value; saveState(); });
 
     const add = (label, text) => {
-      if (state.resumes.length >= MAX_RESUMES) { toast(`最多 ${MAX_RESUMES} 份`); return; }
+      if (activeResumes().length >= MAX_RESUMES) { toast(`現役最多 ${MAX_RESUMES} 份，請先封存一份`); return; }
       if (text.trim().length < 30) { toast("履歷內容太短"); return; }
-      const first = state.resumes.length === 0;
+      const first = activeResumes().length === 0;
       state.resumes.push({
         id: "r-" + Date.now(),
         label: label.trim() || "v" + (state.resumes.length + 1),
@@ -1691,15 +2278,37 @@ function wireTab() {
       });
     }
 
+    // 封存：從現役移出、不占 3 份名額，但內容留著（見 activeResumes() 上面的說明）
     screen.querySelectorAll("[data-delres]").forEach((btn) => btn.addEventListener("click", (ev) => {
       ev.stopPropagation();
       const id = btn.dataset.delres;
-      const wasPri = (state.resumes.find(r => r.id === id) || {}).primary;
-      state.resumes = state.resumes.filter(r => r.id !== id);
-      if (wasPri && state.resumes.length) state.resumes[0].primary = true;
-      state.resume = state.resumes.length ? state.resumes.find(r => r.primary).text : "";
+      const r = state.resumes.find(x => x.id === id);
+      if (!r) return;
+      const wasPri = r.primary;
+      r.archived = true;
+      r.primary = false;
+      const stillActive = activeResumes();
+      if (wasPri && stillActive.length) stillActive[0].primary = true;
+      state.resume = stillActive.length ? (stillActive.find(x => x.primary) || stillActive[0]).text : "";
       if (state.viewingResumeId === id) state.viewingResumeId = null;
-      saveState(); toast("已刪除"); render();
+      saveState(); toast("已封存（內容還在，可以還原）"); render();
+    }));
+
+    screen.querySelectorAll("[data-restoreres]").forEach((btn) => btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (activeResumes().length >= MAX_RESUMES) { toast(`現役已達 ${MAX_RESUMES} 份，請先封存一份`); return; }
+      const r = state.resumes.find(x => x.id === btn.dataset.restoreres);
+      if (r) r.archived = false;
+      saveState(); toast("已還原成現役"); render();
+    }));
+
+    screen.querySelectorAll("[data-permadelres]").forEach((btn) => btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (!confirm("永久刪除這份履歷？這個動作沒辦法復原。")) return;
+      const id = btn.dataset.permadelres;
+      state.resumes = state.resumes.filter(r => r.id !== id);
+      if (state.viewingResumeId === id) state.viewingResumeId = null;
+      saveState(); toast("已永久刪除"); render();
     }));
 
     screen.querySelectorAll("[data-setpri]").forEach((btn) => btn.addEventListener("click", (ev) => {
@@ -1748,6 +2357,12 @@ function wireTab() {
       state.jobOpenSection = state.jobOpenSection === key ? null : key;
       render();
     }));
+    const seedJd = document.getElementById("seedJdAnalysesBtn");
+    if (seedJd) seedJd.addEventListener("click", () => {
+      seedDemoJdAnalyses();
+      toast("🔓 已帶入示範分析紀錄");
+      render();
+    });
     const sja = document.getElementById("startJdAnalysis");
     if (sja) sja.addEventListener("click", () => {
       state.jd = "";
@@ -1768,7 +2383,7 @@ function wireTab() {
     const aj = document.getElementById("analyzeJd");
     if (aj) aj.addEventListener("click", () => {
       if (state.jd.trim().length <= 10) { toast("JD 內容太短，貼完整一點再分析"); return; }
-      if (state.resumes.length === 0) { toast("請先上傳履歷，才能跑真的適配度分析"); return; }
+      if (activeResumes().length === 0) { toast("請先上傳履歷，才能跑真的適配度分析"); return; }
       state.jdSubmitted = true;
       state.realFollowups = null;
       state.realFit = null;
@@ -1834,9 +2449,11 @@ function wireTab() {
         if (cb.checked) toast("✅ 已完成");
       });
     });
+    wireRecFeedback();
   }
 
   if (state.tab === "questions") {
+    wireRecFeedback();
     document.getElementById("backFromQuestions").addEventListener("click", () => { state.tab = "job"; render(); });
     screen.querySelectorAll("[data-followup]").forEach((ta) => {
       ta.addEventListener("input", () => {
@@ -1863,6 +2480,11 @@ function wireTab() {
       if (!confirm("清除全部資料？Basic 5 題要重新回答，沒有備份。")) return;
       localStorage.removeItem(STORAGE_KEY);
       state = defaultState();
+      render();
+    });
+    document.getElementById("seedFullDemoBtn").addEventListener("click", () => {
+      seedFullDemoJourney();
+      toast("🔓 已帶入完整示範旅程");
       render();
     });
   }
@@ -1927,11 +2549,11 @@ function wireTab() {
   }
 
   if (state.tab === "apps") {
+    wireFitTrend();
     const sb = document.getElementById("seedAppsBtn");
     if (sb) sb.addEventListener("click", () => {
-      state.applications = DEMO_APPS.map((a, i) => Object.assign({ id: "app-demo-" + i, jd: "" }, a));
-      saveState();
-      toast("🔓 已解鎖投遞結果、進度數據表");
+      seedDemoApplications();
+      toast("🔓 已帶入示範投遞紀錄");
       render();
     });
 
@@ -1949,7 +2571,14 @@ function wireTab() {
       const status = document.getElementById("appStatus").value;
       const jd = document.getElementById("appJd").value.trim();
       if (!company || !position) { toast("請填公司名稱與職位"); return; }
-      state.applications.push({ id: "app-" + Date.now() + "-" + Math.floor(Math.random() * 1000), company, position, resumeVersion, status, jd });
+      const today = new Date();
+      const date = `${String(today.getMonth() + 1).padStart(2, "0")}/${String(today.getDate()).padStart(2, "0")}`;
+      // 有跑過真的 JD 匹配分析才附分數——手動補的投遞紀錄如果沒經過分析，
+      // 沒有分數是對的，不該硬塞一個編出來的數字上去。
+      const fitScore = unlocked("jdMatch") ? jdMatchScore(currentFit()) : undefined;
+      const entry = { id: "app-" + Date.now() + "-" + Math.floor(Math.random() * 1000), company, position, resumeVersion, status, jd, date, cycle: currentCycleId() || CYCLES[0].id };
+      if (fitScore !== undefined) entry.fitScore = fitScore;
+      state.applications.push(entry);
       state.addingApp = false;
       saveState();
       toast("➕ 已新增投遞紀錄");
