@@ -250,6 +250,7 @@ function defaultState() {
     editingLabelId: null,
     addingResume: false,
     showFitMore: false,
+    trajectoryExpanded: false,
     openDirIdx: null,     // 適配職缺方向建議：展開中的方向 index（accordion，null=全收合）
     demoMask: true,
     afterAppId: null,      // 示範模式：畫面上遮蔽個資與公司名
@@ -1392,30 +1393,51 @@ function renderSettings() {
       ${(() => {
         const s2024 = cycleSummary("2024"), s2026 = cycleSummary("2026");
         if (!s2024 && !s2026) return "";
+
+        // 收合時的一行摘要：起點職稱 → 目前職稱，跟展開後時間軸用同一批 s2024/s2026 算，
+        // 不會有「收合寫一套、展開又是另一套數字」的落差。「社群企劃／內容小編」是履歷全文裡
+        // 寫死的第一份工作，不是從 s2026.first.position 這種「投遞方向」推來的——分批只帶 2026
+        // 資料時，若拿投遞方向當起點職稱，會誤植成「應徵 Senior PM」這種假履歷軌跡。
+        const startTitle = (s2024 || s2026) ? "社群企劃／內容小編" : "";
+        const currentLine = s2026 && s2026.gotOffer ? `${s2026.last.company} · ${s2026.last.position}`
+          : s2024 && s2024.gotOffer ? `${s2024.last.company} · ${s2024.last.position}${s2026 ? "（現職，第 2 次求職進行中）" : ""}`
+          : s2026 ? `現職 Associate Product Manager（某外送平台）・目前進度：投了 ${s2026.count} 家，分數到 ${s2026.last.fitScore} 分`
+          : "求職中，尚未拿到 offer";
+        const cycleCount = [s2024, s2026].filter(Boolean).length;
+        const headline = startTitle && startTitle !== currentLine ? `${startTitle} → ${currentLine}` : currentLine;
+        const expanded = state.trajectoryExpanded;
+
         return `
         <div class="card">
-          <div class="row between"><h3 style="margin:0">🧭 職涯軌跡</h3><span class="chip chip-mock">示範</span></div>
-          <div class="sub">${s2024 && s2026 ? "這不是你第一次用這個平台——分數不會每次都從零開始算" : "目前資料裡看得到的求職紀錄"}</div>
+          <div class="row between"><h3 style="margin:0">🧭 您的職涯軌跡</h3><span class="chip chip-mock">示範</span></div>
+          <div class="sub">${expanded ? (s2024 && s2026 ? "這不是你第一次用這個平台——分數不會每次都從零開始算" : "目前資料裡看得到的求職紀錄") : `${headline}${cycleCount > 1 ? "・累積 " + cycleCount + " 次求職" : ""}`}</div>
+          <button class="linklike" id="toggleTrajectory" type="button" style="margin-top:10px">${expanded ? "收合 ↑" : "展開時間軸看每一步 →"}</button>
+          ${expanded ? `
           <div class="timeline" style="margin-top:12px">
             ${s2024 ? `
             <div class="tlitem"><div class="tldot"></div><div class="tlbody">
               <div class="cn">${s2024.first.date}　開始${cycleOrdinalLabel("2024")}</div>
-              <div class="sub">v1 履歷起跳 <b>${s2024.first.fitScore} 分</b></div>
+              <div class="sub">當時職稱：社群企劃／內容小編，投遞 <b>${s2024.first.position}</b> 等職缺，v1 履歷起跳 <b>${s2024.first.fitScore} 分</b></div>
             </div></div>
             <div class="tlitem"><div class="tldot done"></div><div class="tlbody">
               <div class="cn">${s2024.last.date}　${s2024.gotOffer ? "拿到 offer，入職" : "求職結束"}</div>
-              <div class="sub">投了 ${s2024.count} 家，分數已到 <b>${s2024.last.fitScore} 分</b>。結束後職涯畫像、弱項都留在系統裡，沒有清空</div>
+              <div class="sub">投了 ${s2024.count} 家，分數已到 <b>${s2024.last.fitScore} 分</b>${s2024.gotOffer ? `，職稱從社群企劃／內容小編轉為 <b>${s2024.last.company} · ${s2024.last.position}</b>` : ""}。結束後職涯畫像、弱項都留在系統裡，沒有清空</div>
             </div></div>
             <div class="tlitem"><div class="tldot mock"></div><div class="tlbody">
               <div class="cn">在職期間</div>
-              <div class="sub">示範：持續留意機會，沒有主動投遞</div>
+              <div class="sub">現職：<b>${s2024.last.position}</b>（${s2024.last.company}）。示範：持續留意機會，沒有主動投遞</div>
             </div></div>` : ""}
             ${s2026 ? `
+            <div class="tlitem"><div class="tldot ${s2026.gotOffer ? "done" : "active"}"></div><div class="tlbody">
+              <div class="cn">2026/${s2026.first.date}　${cycleOrdinalLabel("2026")}${s2024 && !s2026.gotOffer ? " · 現在" : ""}</div>
+              <div class="sub">${s2024 ? `帶著 <b>${s2024.last.position}</b>（${s2024.last.company}）的經歷回來，AI 已經記得 2024 年整理過的能力雷達與短板，這次投遞 <b>${s2026.first.position}</b> 等職缺，v1 起跳直接是 <b>${s2026.first.fitScore} 分</b>——比上次 v1 高 ${s2026.first.fitScore - s2024.first.fitScore} 分，不用重新從頭挖故事` : `第一份工作是社群企劃／內容小編，現職 <b>Associate Product Manager</b>（某外送平台）。這次投遞 <b>${s2026.first.position}</b> 等職缺，v1 履歷起跳 <b>${s2026.first.fitScore} 分</b>`}</div>
+            </div></div>
+            ${s2026.gotOffer ? `
             <div class="tlitem"><div class="tldot active"></div><div class="tlbody">
-              <div class="cn">2026/${s2026.first.date}　${cycleOrdinalLabel("2026")}${s2024 ? " · 現在" : ""}</div>
-              <div class="sub">${s2024 ? `同一顆帳號回來，AI 已經記得 2024 年整理過的能力雷達與短板，這次 v1 起跳直接是 <b>${s2026.first.fitScore} 分</b>——比上次 v1 高 ${s2026.first.fitScore - s2024.first.fitScore} 分，不用重新從頭挖故事` : `v1 履歷起跳 <b>${s2026.first.fitScore} 分</b>`}</div>
-            </div></div>` : ""}
-          </div>
+              <div class="cn">2026/${s2026.last.date}　拿到 offer${s2024 ? " · 現在" : ""}</div>
+              <div class="sub">投了 ${s2026.count} 家，分數到 <b>${s2026.last.fitScore} 分</b>。職稱從 <b>${s2024 ? s2024.last.position : "Associate Product Manager"}</b> 更新為 <b>${s2026.last.company} · ${s2026.last.position}</b></div>
+            </div></div>` : ""}` : ""}
+          </div>` : ""}
         </div>`;
       })()}
 
@@ -1439,7 +1461,7 @@ function renderSettings() {
 
       <div class="card">
         <h3>完整示範旅程</h3>
-        <div class="sub">一次帶入履歷（2 版）、職缺分析（3 筆）、投遞紀錄（兩次求職共 ${DEMO_APPS.length + DEMO_APPS_2024.length} 筆）——想快速看完整個「改履歷後分數上升、最後拿到 offer」的故事時用這個。平常自己一步步體驗的話不用按。</div>
+        <div class="sub">想看的不只是「改履歷後分數上升」這種單次轉換，而是「越用越了解你」的長期陪伴——一次帶入履歷（2 版）、職缺分析（3 筆）、投遞紀錄（兩次求職共 ${DEMO_APPS.length + DEMO_APPS_2024.length} 筆），第二次求職回來時 AI 已經記得上次整理過的能力雷達與短板，起跳分數比上次更高。平常自己一步步體驗的話不用按。</div>
         <button class="btn block subtle" id="seedFullDemoBtn" style="margin-top:10px">帶入完整示範旅程 →</button>
       </div>
 
@@ -2465,6 +2487,8 @@ function wireTab() {
   }
 
   if (state.tab === "settings") {
+    const trajBtn = document.getElementById("toggleTrajectory");
+    if (trajBtn) trajBtn.addEventListener("click", () => { state.trajectoryExpanded = !state.trajectoryExpanded; render(); });
     document.getElementById("maskSw").addEventListener("click", () => {
       state.demoMask = !state.demoMask; saveState();
       toast(state.demoMask ? "已遮蔽個資與公司名" : "已顯示真實資訊");
