@@ -713,7 +713,7 @@ function diagFeedbackHtml(id) {
 
 function planDone(id){ return !!(state.planAdopt[id]||{}).done }
 function unlocked(id){
-  if (id==="fitAdvice") return state.resumes.length > 0;
+  if (id==="fitAdvice") return activeResumes().length > 0;
   if (id==="jdHasFollowups") return state.jdSubmitted && state.jd.trim().length > 10;
   if (id==="jdMatch")   return state.jd.trim().length > 10 && answeredFollowupIds().length > 0;
   if (id==="appTable")  return state.applications.length > 0;
@@ -885,11 +885,18 @@ function renderHome() {
 }
 
 const MAX_RESUMES = 3;
+// 3 份上限只管「現役」履歷——超過上限要新增新版本時，不是真的刪掉舊的，是「封存」：
+// 移出現役列表、不占 3 份名額，但內容還在，可以回顧、可以還原。這是為了兌現主頁
+// 職涯軌跡卡片講的「職涯畫像、弱項都留在系統裡，沒有清空」，履歷全文也要做到一樣的承諾，
+// 不能只有分數／分析紀錄留著、履歷本文卻真的沒了。真的要永久刪除，只能從「已封存」區塊動手，
+// 那才是使用者明確表達「這份我真的不要了」的地方。
+function activeResumes() { return state.resumes.filter(r => !r.archived); }
+function archivedResumes() { return state.resumes.filter(r => r.archived); }
 
 function renderResumeView(r) {
   return `<div class="view">
     <button class="backlink" id="backFromResumeView">← 回到履歷列表</button>
-    <div class="h1">${r.primary ? `<span class="pritag">主要</span>` : ""}履歷</div>
+    <div class="h1">${r.primary ? `<span class="pritag">主要</span>` : ""}${r.archived ? `<span class="chip chip-mock" style="margin-right:6px">已封存</span>` : ""}履歷</div>
     <div class="card">
       <div class="row between">
         ${state.editingLabelId === r.id
@@ -897,8 +904,13 @@ function renderResumeView(r) {
           : `<div class="acctname" style="flex:1">${r.label}</div>`}
         <div style="display:flex;gap:4px">
           <button class="iconbtn" data-editlabel="${r.id}" title="改名">${state.editingLabelId === r.id ? "✓" : "✏️"}</button>
-          ${r.primary ? "" : `<button class="iconbtn" data-setpri="${r.id}" title="設為主要">☆</button>`}
-          <button class="iconbtn" data-delres="${r.id}">🗑️</button>
+          ${r.archived ? `
+            <button class="iconbtn" data-restoreres="${r.id}" title="還原成現役">↩</button>
+            <button class="iconbtn" data-permadelres="${r.id}" title="永久刪除">🗑️</button>
+          ` : `
+            ${r.primary ? "" : `<button class="iconbtn" data-setpri="${r.id}" title="設為主要">☆</button>`}
+            <button class="iconbtn" data-delres="${r.id}" title="封存（不是永久刪除）">📦</button>
+          `}
         </div>
       </div>
       <div class="sub" style="margin-top:6px">加入於 ${r.addedAt}</div>
@@ -940,14 +952,14 @@ function renderResume() {
     state.viewingResumeId = null;
   }
 
-  const rs = state.resumes, full = rs.length >= MAX_RESUMES;
+  const rs = activeResumes(), archived = archivedResumes(), full = rs.length >= MAX_RESUMES;
   const rows = rs.map((r) => `
     <div class="rec">
       <div class="row between" data-viewres="${r.id}" style="cursor:pointer;gap:8px">
         <span class="rt">${r.primary ? `<span class="pritag">主要</span>` : ""}${r.label}</span>
         <div style="display:flex;align-items:center;gap:4px;flex:none">
           ${r.primary ? "" : `<button class="iconbtn" data-setpri="${r.id}" title="設為主要">☆</button>`}
-          <button class="iconbtn" data-delres="${r.id}">🗑️</button>
+          <button class="iconbtn" data-delres="${r.id}" title="封存（不是永久刪除）">📦</button>
         </div>
       </div>
       <div class="sub" data-viewres="${r.id}" style="cursor:pointer;margin:0">加入於 ${r.addedAt}</div>
@@ -956,7 +968,7 @@ function renderResume() {
   return `
     <div class="view">
       <div class="h1">履歷</div>
-      <p class="sub">選填，最多 ${MAX_RESUMES} 份。放不同版本可以在投遞時分開記錄，之後就看得出哪一版比較有回應。</p>
+      <p class="sub">選填，現役最多 ${MAX_RESUMES} 份。放不同版本可以在投遞時分開記錄，之後就看得出哪一版比較有回應。滿了要換新版本時是「封存」不是刪除，舊履歷全文還在，隨時能回顧。</p>
 
       <div class="card">
         <div class="row between">
@@ -974,9 +986,26 @@ function renderResume() {
              <button class="btn block subtle" id="seedResumesBtn" style="margin-top:12px">帶入示範履歷（v1＋v5 兩版）→</button>`}
 
         ${full
-          ? `<div class="mock-note" style="margin-top:12px">已達 ${MAX_RESUMES} 份上限，要新增請先刪掉一份。</div>`
+          ? `<div class="mock-note" style="margin-top:12px">現役已達 ${MAX_RESUMES} 份上限，要新增新版本請先封存一份現役履歷。</div>`
           : `<button class="btn block" id="openAddResume" style="margin-top:12px">＋ 新增履歷</button>`}
       </div>
+
+      ${archived.length ? `
+      <div class="card">
+        <div class="row between"><h3 style="margin:0">已封存</h3><span class="chip chip-mock">${archived.length} 份</span></div>
+        <div class="sub">不占現役名額，內容還在，可以回顧或還原。</div>
+        ${archived.map(r => `
+        <div class="rec">
+          <div class="row between" data-viewres="${r.id}" style="cursor:pointer;gap:8px">
+            <span class="rt">${r.label}</span>
+            <div style="display:flex;align-items:center;gap:4px;flex:none">
+              <button class="iconbtn" data-restoreres="${r.id}" title="還原成現役">↩</button>
+              <button class="iconbtn" data-permadelres="${r.id}" title="永久刪除">🗑️</button>
+            </div>
+          </div>
+          <div class="sub" data-viewres="${r.id}" style="cursor:pointer;margin:0">加入於 ${r.addedAt}</div>
+        </div>`).join("")}
+      </div>` : ""}
     </div>`;
 }
 
@@ -1347,7 +1376,7 @@ function renderAfter() {
 // ================= 設定 =================
 
 function renderSettings() {
-  const n = state.applications.length, r = state.resumes.length;
+  const n = state.applications.length, r = activeResumes().length;
   return `
     <div class="view">
       <div class="h1">設定</div>
@@ -1512,6 +1541,127 @@ SQL、Figma、Amplitude、Notion
 【學歷】
 國立大學 企業管理學系｜2017.09 - 2021.06`;
 
+const DEMO_RESUME_V2_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+外送 App 平台公司｜Associate Product Manager｜2023.01 - 現在
+・負責結帳流程與轉換率優化，獨立抓出結帳頁流失率異常，定位到是地圖 API 延遲造成而非 UI 問題，修復後結帳完成率提升 6%
+・撰寫並上線 6 份完整 PRD，涵蓋付款方式擴充、地址自動偵測、訂單狀態通知優化等既有功能迭代
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・負責社群內容規劃與發布
+・協助執行行銷活動
+
+【技能】
+SQL、Figma、Amplitude、Notion
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
+const DEMO_RESUME_V3_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+外送 App 平台公司｜Associate Product Manager｜2023.01 - 現在
+・負責結帳流程與轉換率優化，獨立抓出結帳頁流失率異常，定位到是地圖 API 延遲造成而非 UI 問題，修復後結帳完成率提升 6%
+・撰寫並上線 6 份完整 PRD，涵蓋付款方式擴充、地址自動偵測、訂單狀態通知優化等既有功能迭代
+・每週固定跟工程、設計、行銷三個窗口對齊優先順序，曾協調設計端的互動效果與工程時程衝突，依商業影響大小決定取捨範圍
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・每日追蹤社群貼文成效數字，半年後主動申請調任營運企劃
+・轉任後開始撰寫站內活動規格，與行銷、視覺協作執行檔期活動
+
+【技能】
+SQL、Figma、Amplitude、Notion
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
+const DEMO_RESUME_V4_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+外送 App 平台公司｜Associate Product Manager｜2023.01 - 現在
+・負責結帳流程與轉換率優化，獨立抓出結帳頁流失率異常，定位到是地圖 API 延遲造成而非 UI 問題，修復後結帳完成率提升 6%
+・撰寫並上線 6 份完整 PRD，涵蓋付款方式擴充、地址自動偵測、訂單狀態通知優化等既有功能迭代
+・每週固定跟工程、設計、行銷三個窗口對齊優先順序，曾協調設計端的互動效果與工程時程衝突，依商業影響大小決定取捨範圍
+・side project：從 0 到 1 規劃過一個內部工具的最小可行版本，從訪談 3 位使用者到定義規格範圍，獨立跑完一輪
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・每日追蹤社群貼文成效數字，半年後主動申請調任營運企劃
+・轉任後開始撰寫站內活動規格，與行銷、視覺協作執行檔期活動
+
+【技能】
+SQL、Figma、Amplitude、Notion
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
+// 2024 年那次求職的履歷（示範）——比 2026 這輪更早期，職稱與內容都刻意寫得比較單薄，
+// 對照主頁職涯軌跡卡片講的「v1 起跳 46 分」。三版都封存，不占現役 3 份名額，但點進履歷
+// 分頁的「已封存」還是看得到全文，兌現「職涯畫像、弱項都留在系統裡，沒有清空」的承諾。
+const DEMO_RESUME_2024_V1_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・負責社群貼文發布
+・協助行銷活動執行
+
+【技能】
+Figma、Notion
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
+const DEMO_RESUME_2024_V2_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・每日追蹤社群貼文成效數字，找內容規律
+・協助行銷活動執行，曾主導一檔中型檔期活動的內容規劃
+
+【技能】
+Figma、Notion、基礎 SQL
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
+const DEMO_RESUME_2024_V3_TEXT = `（此為假資料，非真實履歷全文，僅供畫面示範用）
+
+張小明
+product.demo@example.com｜0912-345-678｜台北市
+
+【工作經歷】
+
+電商平台公司｜社群企劃／內容小編｜2021.07 - 2022.12
+・每日追蹤社群貼文成效數字，找內容規律，半年後主動申請調任營運企劃
+・轉任後開始撰寫站內活動規格，主導一檔中型檔期活動，與行銷、視覺協作執行
+・活動期間站內流量較前一檔提升，開始對「數字→規格」的轉譯工作產生興趣
+
+【技能】
+Figma、Notion、SQL
+
+【學歷】
+國立大學 企業管理學系｜2017.09 - 2021.06`;
+
 // 職缺分析紀錄的示範資料，跟 DEMO_APPS 裡同一批公司對上（KKday v1／Pinkoi v3／Cathay v5），
 // 讓「帶入示範紀錄」一次把履歷、職缺分析、投遞三個分頁都填成同一條故事線，不會只有
 // 投遞紀錄有東西、履歷跟職缺卻是空的。fitStrong/fitWeak/fitMiss/questions/prep/hardest
@@ -1548,12 +1698,28 @@ function demoJdAnalysisRecords() {
 // 三個分頁各自的示範資料，拆成獨立函式——履歷／職缺分析／投遞可以各自分開帶入
 // （在自己的分頁按各自的按鈕，一次只補一塊），內容跟設定裡「完整示範旅程」一鍵
 // 帶入的完全一樣，只是拆開來看，兩種路徑最後長出來的資料要對得起來。
+// 履歷版本要跟 DEMO_APPS／demoJdAnalysisRecords 裡引用的版本數對得起來——這批投遞紀錄
+// 橫跨 v1~v5 五個版本，履歷分頁就該有五份，不能只帶 2 份、卻讓投遞紀錄講得好像有 5 份。
+// 現役上限是 3，所以 v1、v2 封存（已經被後面版本取代），v3~v5 留在現役，v5 是主要版本。
 function seedDemoResumes() {
   state.resumes = [
-    { id: "r-demo-v1", label: "v1 原版", text: DEMO_RESUME_V1_TEXT, addedAt: "2026/08/13", primary: false },
+    { id: "r-demo-v1", label: "v1 原版", text: DEMO_RESUME_V1_TEXT, addedAt: "2026/08/13", primary: false, archived: true },
+    { id: "r-demo-v2", label: "v2 加量化成果", text: DEMO_RESUME_V2_TEXT, addedAt: "2026/08/16", primary: false, archived: true },
+    { id: "r-demo-v3", label: "v3 補跨部門協作案例", text: DEMO_RESUME_V3_TEXT, addedAt: "2026/08/19", primary: false },
+    { id: "r-demo-v4", label: "v4 加 0-1 經驗框架", text: DEMO_RESUME_V4_TEXT, addedAt: "2026/08/22", primary: false },
     { id: "r-demo-v5", label: "v5 針對 JD 客製開頭", text: ALAN.resumeText, addedAt: "2026/08/24", primary: true },
   ];
   state.resume = state.resumes.find(r => r.primary).text;
+  saveState();
+}
+// 2024 年那次求職的履歷，只有「完整示範旅程」會帶入——分批體驗（單獨在履歷分頁按按鈕）
+// 只補這次求職，不夾帶歷史週期，理由跟 DEMO_APPS_2024 上面那則註解一樣。三版全部封存。
+function seedDemoResumes2024() {
+  state.resumes.push(
+    { id: "r-demo-2024-v1", label: "2024·v1 起點版", text: DEMO_RESUME_2024_V1_TEXT, addedAt: "2024/09/03", primary: false, archived: true },
+    { id: "r-demo-2024-v2", label: "2024·v2 加案例版", text: DEMO_RESUME_2024_V2_TEXT, addedAt: "2024/10/10", primary: false, archived: true },
+    { id: "r-demo-2024-v3", label: "2024·v3 定案版", text: DEMO_RESUME_2024_V3_TEXT, addedAt: "2024/11/15", primary: false, archived: true },
+  );
   saveState();
 }
 function seedDemoJdAnalyses() {
@@ -1574,6 +1740,7 @@ function seedDemoApplicationsWithHistory() {
 }
 function seedFullDemoJourney() {
   seedDemoResumes();
+  seedDemoResumes2024();
   seedDemoJdAnalyses();
   seedDemoApplicationsWithHistory();
 }
@@ -2049,9 +2216,9 @@ function wireTab() {
     if (txt) txt.addEventListener("input", () => { state.draftText = txt.value; saveState(); });
 
     const add = (label, text) => {
-      if (state.resumes.length >= MAX_RESUMES) { toast(`最多 ${MAX_RESUMES} 份`); return; }
+      if (activeResumes().length >= MAX_RESUMES) { toast(`現役最多 ${MAX_RESUMES} 份，請先封存一份`); return; }
       if (text.trim().length < 30) { toast("履歷內容太短"); return; }
-      const first = state.resumes.length === 0;
+      const first = activeResumes().length === 0;
       state.resumes.push({
         id: "r-" + Date.now(),
         label: label.trim() || "v" + (state.resumes.length + 1),
@@ -2111,15 +2278,37 @@ function wireTab() {
       });
     }
 
+    // 封存：從現役移出、不占 3 份名額，但內容留著（見 activeResumes() 上面的說明）
     screen.querySelectorAll("[data-delres]").forEach((btn) => btn.addEventListener("click", (ev) => {
       ev.stopPropagation();
       const id = btn.dataset.delres;
-      const wasPri = (state.resumes.find(r => r.id === id) || {}).primary;
-      state.resumes = state.resumes.filter(r => r.id !== id);
-      if (wasPri && state.resumes.length) state.resumes[0].primary = true;
-      state.resume = state.resumes.length ? state.resumes.find(r => r.primary).text : "";
+      const r = state.resumes.find(x => x.id === id);
+      if (!r) return;
+      const wasPri = r.primary;
+      r.archived = true;
+      r.primary = false;
+      const stillActive = activeResumes();
+      if (wasPri && stillActive.length) stillActive[0].primary = true;
+      state.resume = stillActive.length ? (stillActive.find(x => x.primary) || stillActive[0]).text : "";
       if (state.viewingResumeId === id) state.viewingResumeId = null;
-      saveState(); toast("已刪除"); render();
+      saveState(); toast("已封存（內容還在，可以還原）"); render();
+    }));
+
+    screen.querySelectorAll("[data-restoreres]").forEach((btn) => btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (activeResumes().length >= MAX_RESUMES) { toast(`現役已達 ${MAX_RESUMES} 份，請先封存一份`); return; }
+      const r = state.resumes.find(x => x.id === btn.dataset.restoreres);
+      if (r) r.archived = false;
+      saveState(); toast("已還原成現役"); render();
+    }));
+
+    screen.querySelectorAll("[data-permadelres]").forEach((btn) => btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (!confirm("永久刪除這份履歷？這個動作沒辦法復原。")) return;
+      const id = btn.dataset.permadelres;
+      state.resumes = state.resumes.filter(r => r.id !== id);
+      if (state.viewingResumeId === id) state.viewingResumeId = null;
+      saveState(); toast("已永久刪除"); render();
     }));
 
     screen.querySelectorAll("[data-setpri]").forEach((btn) => btn.addEventListener("click", (ev) => {
@@ -2194,7 +2383,7 @@ function wireTab() {
     const aj = document.getElementById("analyzeJd");
     if (aj) aj.addEventListener("click", () => {
       if (state.jd.trim().length <= 10) { toast("JD 內容太短，貼完整一點再分析"); return; }
-      if (state.resumes.length === 0) { toast("請先上傳履歷，才能跑真的適配度分析"); return; }
+      if (activeResumes().length === 0) { toast("請先上傳履歷，才能跑真的適配度分析"); return; }
       state.jdSubmitted = true;
       state.realFollowups = null;
       state.realFit = null;
